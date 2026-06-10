@@ -1,114 +1,16 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyAYMzJvCR17JzfHvMuLuF_aGmptu0derGU",
-    authDomain: "classspace-faeb3.firebaseapp.com",
-    projectId: "classspace-faeb3",
-    storageBucket: "classspace-faeb3.firebasestorage.app",
-    messagingSenderId: "402654981974",
-    appId: "1:402654981974:web:f8011e1fe8022d421130f7",
-    measurementId: "G-7NT2WYYT21"
-};
+// ==========================================
+// script.js - Warstwa Widoku (UI) i Logiki Aplikacji
+// ==========================================
 
-if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-    var db = firebase.firestore();
-}
-
-const defaultRooms = [{
-        id: '101',
-        type: 'Sala Ćwiczeniowa',
-        capacity: 30,
-        hasProjector: true,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: '102',
-        type: 'Sala Ćwiczeniowa',
-        capacity: 20,
-        hasProjector: false,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: 'AULA_A',
-        type: 'Aula Wykładowa',
-        capacity: 200,
-        hasProjector: true,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: 'LAB_1',
-        type: 'Laboratorium IT',
-        capacity: 15,
-        hasProjector: true,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: '205',
-        type: 'Sala Seminaryjna',
-        capacity: 12,
-        hasProjector: false,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: '301',
-        type: 'Sala Ćwiczeniowa',
-        capacity: 40,
-        hasProjector: true,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: '302',
-        type: 'Sala Ćwiczeniowa',
-        capacity: 45,
-        hasProjector: true,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
-    {
-        id: 'SPORT',
-        type: 'Hala Sportowa',
-        capacity: 100,
-        hasProjector: false,
-        isBooked: false,
-        bookedBy: '',
-        time: '',
-        subject: '',
-        hasIssue: false,
-        issueDesc: ''
-    },
+const defaultRooms = [
+    { id: '101', type: 'Sala Ćwiczeniowa', capacity: 30, hasProjector: true, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: '102', type: 'Sala Ćwiczeniowa', capacity: 20, hasProjector: false, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: 'AULA_A', type: 'Aula Wykładowa', capacity: 200, hasProjector: true, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: 'LAB_1', type: 'Laboratorium IT', capacity: 15, hasProjector: true, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: '205', type: 'Sala Seminaryjna', capacity: 12, hasProjector: false, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: '301', type: 'Sala Ćwiczeniowa', capacity: 40, hasProjector: true, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: '302', type: 'Sala Ćwiczeniowa', capacity: 45, hasProjector: true, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
+    { id: 'SPORT', type: 'Hala Sportowa', capacity: 100, hasProjector: false, isBooked: false, bookedBy: '', time: '', subject: '', hasIssue: false, issueDesc: '' },
 ];
 
 const campusLayout = {
@@ -122,14 +24,11 @@ let rooms = [];
 let auditLogs = [];
 let currentRole = 'wykladowca';
 let selectedMapRoomId = null;
+let currentCaptchaAnswer = 0;
 
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// ------------------------------------------
+// UI - INTERFEJS LOGOWANIA I REJESTRACJI
+// ------------------------------------------
 
 function toggleTheme() {
     const html = document.documentElement;
@@ -168,8 +67,6 @@ function selectRole(role) {
     document.getElementById('register-role').value = role;
 }
 
-let currentCaptchaAnswer = 0;
-
 function generateCaptcha(formType) {
     const num1 = Math.floor(Math.random() * 10) + 1;
     const num2 = Math.floor(Math.random() * 10) + 1;
@@ -194,22 +91,11 @@ function checkPasswordStrength() {
     if (password.match(/[0-9]/)) strength += 1;
     if (password.match(/[^a-zA-Z0-9]/)) strength += 1;
     switch (strength) {
-        case 1:
-            bar.style.width = '33%';
-            bar.style.backgroundColor = 'var(--danger)';
-            break;
+        case 1: bar.style.width = '33%'; bar.style.backgroundColor = 'var(--danger)'; break;
         case 2:
-        case 3:
-            bar.style.width = '66%';
-            bar.style.backgroundColor = 'var(--warning)';
-            break;
-        case 4:
-            bar.style.width = '100%';
-            bar.style.backgroundColor = 'var(--success)';
-            break;
-        default:
-            bar.style.width = '10%';
-            bar.style.backgroundColor = 'var(--danger)';
+        case 3: bar.style.width = '66%'; bar.style.backgroundColor = 'var(--warning)'; break;
+        case 4: bar.style.width = '100%'; bar.style.backgroundColor = 'var(--success)'; break;
+        default: bar.style.width = '10%'; bar.style.backgroundColor = 'var(--danger)';
     }
 }
 
@@ -224,6 +110,19 @@ function hideAuthAlert() {
     document.getElementById('auth-alert-box').style.display = 'none';
 }
 
+function showAppAlert(msg, type) {
+    const alertBox = document.getElementById('app-alert-msg');
+    alertBox.className = `alert alert-${type}`;
+    alertBox.innerText = msg;
+    alertBox.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { alertBox.style.display = 'none'; }, 8000);
+}
+
+// ------------------------------------------
+// LOGIKA AUTORYZACJI
+// ------------------------------------------
+
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value.trim();
@@ -236,33 +135,19 @@ async function handleLogin(e) {
         return;
     }
 
-    if (typeof db === 'undefined') {
-        showAuthAlert('Błąd bazy danych Firebase.', 'danger');
-        return;
-    }
-
     try {
-        const hashedPassword = await hashPassword(pass);
-        const userDoc = await db.collection('users').doc(email).get();
-
-        if (!userDoc.exists || userDoc.data().password !== hashedPassword) {
-            showAuthAlert('Błędny adres e-mail lub hasło.', 'danger');
-            return;
-        }
-
-        const userData = userDoc.data();
+        // Wywołanie zewnętrznego serwisu
+        const userData = await ApiService.loginUser(email, pass);
+        
         localStorage.setItem('classSpaceUserRole', userData.role);
         localStorage.setItem('classSpaceUserName', userData.name);
 
         showAuthAlert('Logowanie udane. Przekierowywanie...', 'success');
-        addLiveLog("SYSTEM", "SYSTEM", userData.name, "Pomyślne logowanie do systemu.");
+        await ApiService.addSystemLog("SYSTEM", "SYSTEM", userData.name, "Pomyślne logowanie do systemu.");
 
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
+        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
     } catch (error) {
-        console.error("Login error:", error);
-        showAuthAlert('Wystąpił błąd podczas logowania.', 'danger');
+        showAuthAlert(error.message || 'Wystąpił błąd podczas logowania.', 'danger');
     }
 }
 
@@ -286,104 +171,42 @@ async function handleRegister(e) {
     }
 
     try {
-        const userRef = db.collection('users').doc(email);
-        const docSnap = await userRef.get();
-        if (docSnap.exists) {
-            showAuthAlert('Konto z tym adresem e-mail już istnieje.', 'danger');
-            return;
-        }
-
-        const hashedPassword = await hashPassword(pass);
-
-        await userRef.set({
-            name: name,
-            email: email,
-            password: hashedPassword,
-            role: role,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
+        // Wywołanie zewnętrznego serwisu
+        await ApiService.registerUser(name, email, pass, role);
         showAuthAlert('Konto zostało utworzone. Możesz się zalogować.', 'success');
-        setTimeout(() => {
-            switchTab('login');
-        }, 2000);
+        setTimeout(() => { switchTab('login'); }, 2000);
     } catch (error) {
-        showAuthAlert('Wystąpił błąd podczas rejestracji.', 'danger');
+        showAuthAlert(error.message || 'Wystąpił błąd podczas rejestracji.', 'danger');
     }
 }
 
-function logout() {
+async function logout() {
     const userName = localStorage.getItem('classSpaceUserName') || "Użytkownik";
-    addLiveLog("SYSTEM", "SYSTEM", userName, "Wylogowanie z systemu.");
+    await ApiService.addSystemLog("SYSTEM", "SYSTEM", userName, "Wylogowanie z systemu.");
     localStorage.removeItem('classSpaceUserName');
     window.location.href = 'login.html';
 }
 
-function addLiveLog(action, roomId, user, details = "") {
-    const timeString = new Date().toLocaleString('pl-PL');
-    const logData = {
-        time: timeString,
-        action: action,
-        room: roomId,
-        user: user,
-        details: details
-    };
+// ------------------------------------------
+// LOGIKA GŁÓWNEJ APLIKACJI (REZERWACJE, MAPA)
+// ------------------------------------------
 
-    if (typeof db !== 'undefined') {
-        logData.timestamp = firebase.firestore.FieldValue.serverTimestamp();
-        db.collection("logs").add(logData).catch(err => console.error("Fire DB Error:", err));
-    }
+function initAndSyncRooms() {
+    // 1. Zabezpieczenie przed brakiem danych
+    ApiService.initDefaultRooms(defaultRooms);
 
-    const logString = `[${timeString}] ${action}: ${user} | Sala: ${roomId} | ${details}`;
-    auditLogs.unshift(logString);
-    if (currentRole === 'admin') renderLogs();
-}
-
-async function loadLogsFromFirebase() {
-    if (typeof db === 'undefined') return;
-    db.collection('logs').orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
-        auditLogs = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            auditLogs.push(`[${data.time}] ${data.action}: ${data.user} | Sala: ${data.room} | ${data.details}`);
-        });
-        if (currentRole === 'admin') renderLogs();
+    // 2. Podpięcie nasłuchiwania na zmiany w bazie
+    ApiService.subscribeToRooms((pobraneSale) => {
+        rooms = pobraneSale;
+        refreshViews();
+        if (currentRole === 'portiernia') renderPortierniaRooms();
     });
 }
 
-function renderLogs() {
-    const container = document.getElementById('logs-container');
-    if (!container) return;
-    if (auditLogs.length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; margin-top: 20px;">Brak historii działań.</div>';
-        return;
-    }
-    container.innerHTML = auditLogs.map(log => {
-        return `<div style="padding: 8px; border-bottom: 1px dashed var(--border);">${log}</div>`;
-    }).join('');
-}
-
-async function initAndSyncRooms() {
-    if (typeof db === 'undefined') return;
-
-    const snapshot = await db.collection('sale').get();
-    if (snapshot.empty) {
-        const batch = db.batch();
-        defaultRooms.forEach(room => {
-            const roomRef = db.collection('sale').doc(room.id);
-            batch.set(roomRef, room);
-        });
-        await batch.commit();
-        console.log("Inicjalizacja domyślnych sal w Firebase zakończona.");
-    }
-
-    db.collection('sale').onSnapshot(liveSnapshot => {
-        rooms = [];
-        liveSnapshot.forEach(doc => {
-            rooms.push(doc.data());
-        });
-        refreshViews();
-        renderPortierniaRooms();
+function loadSystemLogs() {
+    ApiService.subscribeToLogs((pobraneLogi) => {
+        auditLogs = pobraneLogi;
+        if (currentRole === 'admin') renderLogs();
     });
 }
 
@@ -407,30 +230,17 @@ setInterval(() => {
 function switchAppRole(role) {
     currentRole = role;
     document.querySelectorAll('.btn-role').forEach(b => b.classList.remove('active'));
-    document.getElementById(`btn-${role}`).classList.add('active');
+    
+    const activeBtn = document.getElementById(`btn-${role}`);
+    if (activeBtn) activeBtn.classList.add('active');
 
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     document.getElementById(`view-${role}`).classList.add('active');
-
     document.getElementById('app-alert-msg').style.display = 'none';
 
     if (role === 'wykladowca') refreshViews();
     if (role === 'portiernia') renderPortierniaRooms();
     if (role === 'admin') renderLogs();
-}
-
-function showAppAlert(msg, type) {
-    const alertBox = document.getElementById('app-alert-msg');
-    alertBox.className = `alert alert-${type}`;
-    alertBox.innerText = msg;
-    alertBox.style.display = 'block';
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-    setTimeout(() => {
-        alertBox.style.display = 'none';
-    }, 8000);
 }
 
 function calculateEndTime(startTime, durationMinutes) {
@@ -446,6 +256,100 @@ function refreshViews() {
     renderInteractiveMap();
     renderWykladowcaRooms();
 }
+
+async function bookRoom(roomId) {
+    const nameInput = document.getElementById('user-name');
+    const subjectInput = document.getElementById('booking-subject');
+
+    const name = nameInput.value.trim();
+    const subject = subjectInput.value.trim();
+    const startTime = document.getElementById('search-time').value;
+    const duration = document.getElementById('search-duration').value;
+
+    if (!name || !subject) {
+        showAppAlert('Wypełnij Imię i Temat zajęć.', 'danger');
+        return;
+    }
+
+    const endTime = calculateEndTime(startTime, duration);
+
+    try {
+        await ApiService.bookRoom(roomId, name, subject, startTime, endTime);
+        await ApiService.addSystemLog("REZERWACJA", roomId, name, `Zajęcia: ${subject} (${startTime}-${endTime})`);
+        showAppAlert(`Operacja udana. Sala ${roomId} zarezerwowana.`, 'success');
+    } catch (e) {
+        showAppAlert(e.message || "Błąd serwera podczas rezerwacji.", "danger");
+    }
+}
+
+async function cancelRoom(roomId, source) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    const user = room.bookedBy || "Nieznany";
+
+    try {
+        await ApiService.cancelRoom(roomId);
+        await ApiService.addSystemLog("OPUSZCZENIE", roomId, user, `Zwolnione przez moduł: ${source}`);
+        if (source === 'wykladowca') showAppAlert(`Rezerwacja sali ${roomId} anulowana.`, 'success');
+    } catch (e) {
+        showAppAlert("Błąd serwera podczas anulowania rezerwacji.", "danger");
+    }
+}
+
+async function reportIssue(roomId) {
+    const desc = prompt(`Zgłaszasz usterkę w Sali ${roomId}.\nKrótko opisz problem:`);
+    if (desc !== null && desc.trim() !== '') {
+        const userName = localStorage.getItem('classSpaceUserName') || "Użytkownik";
+        try {
+            await ApiService.reportIssue(roomId, desc.trim(), userName);
+            showAppAlert(`Zgłoszono usterkę dla sali ${roomId}.`, 'warning');
+        } catch (e) {
+            showAppAlert("Błąd serwera podczas zgłaszania usterki.", "danger");
+        }
+    }
+}
+
+async function resolveIssue(roomId) {
+    const desc = prompt(`Zamykasz usterkę w sali ${roomId}.\nPodaj krótki opis naprawy (np. "Wymieniono kabel HDMI"):`);
+    if (desc !== null && desc.trim() !== '') {
+        const userName = localStorage.getItem('classSpaceUserName') || "Portiernia/Admin";
+        try {
+            await ApiService.resolveIssue(roomId, desc.trim(), userName);
+            showAppAlert(`Usterka w sali ${roomId} została oznaczona jako naprawiona.`, 'success');
+        } catch (e) {
+            showAppAlert("Błąd serwera podczas rozwiązywania usterki.", "danger");
+        }
+    }
+}
+
+async function adminClearAll() {
+    if (!confirm("Czy na pewno chcesz zresetować wszystkie sale do stanu domyślnego?")) return;
+    try {
+        await ApiService.resetAllRooms(rooms);
+        const userName = localStorage.getItem('classSpaceUserName') || "Admin";
+        await ApiService.addSystemLog("RESET", "WSZYSTKIE", userName, "Twardy reset bazy danych sal.");
+        showAppAlert("Wszystkie rezerwacje i usterki zostały pomyślnie wyczyszczone.", "success");
+    } catch (e) {
+        showAppAlert("Błąd serwera podczas resetowania bazy.", "danger");
+    }
+}
+
+async function checkNotifications() {
+    const myName = localStorage.getItem('classSpaceUserName');
+    if (!myName) return;
+    try {
+        const wiadomosci = await ApiService.fetchAndClearNotifications(myName);
+        if (wiadomosci && wiadomosci.length > 0) {
+            showAppAlert("Masz nowe powiadomienia:\n" + wiadomosci.join("\n"), 'success');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// ------------------------------------------
+// RENDEROWANIE WIDOKÓW (HTML GENERATORY)
+// ------------------------------------------
 
 function renderInteractiveMap() {
     const mapContainer = document.getElementById('interactive-map');
@@ -513,85 +417,6 @@ function bookSelectedMapRoom() {
     if (selectedMapRoomId) {
         bookRoom(selectedMapRoomId);
         selectedMapRoomId = null;
-    }
-}
-
-async function reportIssue(roomId) {
-    const desc = prompt(`Zgłaszasz usterkę w Sali ${roomId}.\nKrótko opisz problem:`);
-    if (desc !== null && desc.trim() !== '') {
-        const userName = localStorage.getItem('classSpaceUserName') || "Użytkownik";
-
-        await db.collection('awarie').add({
-            roomId: roomId,
-            opis: desc.trim(),
-            zgloszonePrzez: userName,
-            status: 'Otwarta',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await db.collection('sale').doc(roomId).update({
-            hasIssue: true,
-            issueDesc: desc.trim()
-        });
-
-        await db.collection('logi_usterek').add({
-            roomId: roomId,
-            akcja: 'ZGŁOSZENIE',
-            opis: desc.trim(),
-            uzytkownik: userName,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        addLiveLog("USTERKA", roomId, userName, `Opis: ${desc.trim()}`);
-        showAppAlert(`Zgłoszono usterkę dla sali ${roomId}.`, 'warning');
-    }
-}
-
-async function resolveIssue(roomId) {
-    const desc = prompt(`Zamykasz usterkę w sali ${roomId}.\nPodaj krótki opis naprawy (np. "Wymieniono kabel HDMI"):`);
-    if (desc !== null && desc.trim() !== '') {
-        const userName = localStorage.getItem('classSpaceUserName') || "Portiernia/Admin";
-
-        await db.collection('sale').doc(roomId).update({
-            hasIssue: false,
-            issueDesc: ''
-        });
-
-        const awarieSnapshot = await db.collection('awarie')
-            .where('roomId', '==', roomId)
-            .where('status', '==', 'Otwarta')
-            .get();
-
-        awarieSnapshot.forEach(async (doc) => {
-            const data = doc.data();
-            
-            await db.collection('awarie').doc(doc.id).update({
-                status: 'Zamknięta',
-                rozwiazanie: desc.trim(),
-                naprawionePrzez: userName,
-                dataNaprawy: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            if (data.zgloszonePrzez) {
-                await db.collection('powiadomienia').add({
-                    uzytkownik: data.zgloszonePrzez,
-                    wiadomosc: `Usterka w sali ${roomId} została zamknięta. Opis naprawy: ${desc.trim()}`,
-                    odczytane: false,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
-        });
-
-        await db.collection('logi_usterek').add({
-            roomId: roomId,
-            akcja: 'NAPRAWA',
-            opis: desc.trim(),
-            uzytkownik: userName,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        addLiveLog("NAPRAWA", roomId, userName, `Rozwiązano usterkę: ${desc.trim()}`);
-        showAppAlert(`Usterka w sali ${roomId} została oznaczona jako naprawiona.`, 'success');
     }
 }
 
@@ -690,147 +515,17 @@ function renderPortierniaRooms() {
     });
 }
 
-async function bookRoom(roomId) {
-    const nameInput = document.getElementById('user-name');
-    const subjectInput = document.getElementById('booking-subject');
-
-    const name = nameInput.value.trim();
-    const subject = subjectInput.value.trim();
-    const startTime = document.getElementById('search-time').value;
-    const duration = document.getElementById('search-duration').value;
-
-    if (!name || !subject) {
-        showAppAlert('Wypełnij Imię i Temat zajęć.', 'danger');
+function renderLogs() {
+    const container = document.getElementById('logs-container');
+    if (!container) return;
+    if (auditLogs.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; margin-top: 20px;">Brak historii działań.</div>';
         return;
     }
-
-    const endTime = calculateEndTime(startTime, duration);
-
-    try {
-        await db.collection('rezerwacje').add({
-            roomId: roomId,
-            userName: name,
-            subject: subject,
-            startTime: startTime,
-            endTime: endTime,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await db.collection('sale').doc(roomId).update({
-            isBooked: true,
-            bookedBy: name,
-            subject: subject,
-            time: `${startTime} - ${endTime}`
-        });
-
-        addLiveLog("REZERWACJA", roomId, name, `Zajęcia: ${subject} (${startTime}-${endTime})`);
-        showAppAlert(`Operacja udana. Sala ${roomId} zarezerwowana.`, 'success');
-    } catch (e) {
-        console.error(e);
-        showAppAlert("Błąd bazy danych.", "danger");
-    }
+    container.innerHTML = auditLogs.map(log => {
+        return `<div style="padding: 8px; border-bottom: 1px dashed var(--border);">${log}</div>`;
+    }).join('');
 }
-
-async function cancelRoom(roomId, source) {
-    const room = rooms.find(r => r.id === roomId);
-    if (!room) return;
-    const user = room.bookedBy || "Nieznany";
-
-    await db.collection('sale').doc(roomId).update({
-        isBooked: false,
-        bookedBy: '',
-        subject: '',
-        time: ''
-    });
-
-    addLiveLog("OPUSZCZENIE", roomId, user, `Zwolnione przez moduł: ${source}`);
-    if (source === 'wykladowca') showAppAlert(`Rezerwacja sali ${roomId} anulowana.`, 'success');
-}
-
-async function adminClearAll() {
-    if (!confirm("Czy na pewno chcesz zresetować wszystkie sale do stanu domyślnego?")) return;
-    try {
-        const batch = db.batch();
-        rooms.forEach(room => {
-            const roomRef = db.collection('sale').doc(room.id);
-            batch.update(roomRef, {
-                isBooked: false,
-                bookedBy: '',
-                subject: '',
-                time: '',
-                hasIssue: false,
-                issueDesc: ''
-            });
-        });
-        await batch.commit();
-        const userName = localStorage.getItem('classSpaceUserName') || "Admin";
-        addLiveLog("RESET", "WSZYSTKIE", userName, "Twardy reset bazy danych sal.");
-        showAppAlert("Wszystkie rezerwacje i usterki zostały pomyślnie wyczyszczone.", "success");
-    } catch (e) {
-        console.error(e);
-        showAppAlert("Błąd podczas resetowania bazy.", "danger");
-    }
-}
-
-async function checkNotifications() {
-    const myName = localStorage.getItem('classSpaceUserName');
-    if (!myName || typeof db === 'undefined') return;
-
-    try {
-        const snapshot = await db.collection('powiadomienia')
-            .where('uzytkownik', '==', myName)
-            .where('odczytane', '==', false)
-            .get();
-
-        if (!snapshot.empty) {
-            let wiadomosci = [];
-            snapshot.forEach(doc => {
-                wiadomosci.push(doc.data().wiadomosc);
-                db.collection('powiadomienia').doc(doc.id).update({ odczytane: true });
-            });
-            showAppAlert("Masz nowe powiadomienia:\n" + wiadomosci.join("\n"), 'success');
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('classSpaceTheme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-
-    if (document.getElementById('login-page')) generateCaptcha('login');
-
-    if (document.getElementById('app-page')) {
-        initAndSyncRooms();
-        loadLogsFromFirebase();
-        initDateTime();
-
-        const savedName = localStorage.getItem('classSpaceUserName');
-        if (savedName && document.getElementById('user-name')) {
-            document.getElementById('user-name').value = savedName;
-            document.getElementById('user-name').disabled = true;
-        }
-
-        const savedRole = localStorage.getItem('classSpaceUserRole') || 'wykladowca';
-        if (savedRole === 'admin') {
-            document.getElementById('btn-wykladowca').style.display = 'block';
-            document.getElementById('btn-portiernia').style.display = 'block';
-            document.getElementById('btn-admin').style.display = 'block';
-            switchAppRole('admin');
-        } else if (savedRole === 'portiernia') {
-            document.getElementById('btn-wykladowca').style.display = 'none';
-            document.getElementById('btn-admin').style.display = 'none';
-            switchAppRole('portiernia');
-        } else {
-            document.getElementById('btn-portiernia').style.display = 'none';
-            document.getElementById('btn-admin').style.display = 'none';
-            switchAppRole('wykladowca');
-        }
-
-        setTimeout(checkNotifications, 1500);
-    }
-});
 
 function exportToCSV() {
     if (!auditLogs || auditLogs.length === 0) {
@@ -845,18 +540,55 @@ function exportToCSV() {
         csvContent += `"${safeLog}"\n`;
     });
 
-    const blob = new Blob(["\uFEFF" + csvContent], {
-        type: 'text/csv;charset=utf-8;'
-    });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", "logi_systemowe_classspace.csv");
     document.body.appendChild(link);
-
     link.click();
     document.body.removeChild(link);
 
     showAppAlert("Pomyślnie wyeksportowano logi do pliku CSV.", "success");
 }
+
+// ------------------------------------------
+// INICJALIZACJA APLIKACJI (START)
+// ------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('classSpaceTheme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    if (document.getElementById('login-page')) generateCaptcha('login');
+
+    if (document.getElementById('app-page')) {
+        initAndSyncRooms();
+        loadSystemLogs();
+        initDateTime();
+
+        const savedName = localStorage.getItem('classSpaceUserName');
+        if (savedName && document.getElementById('user-name')) {
+            document.getElementById('user-name').value = savedName;
+            document.getElementById('user-name').disabled = true;
+        }
+
+        const savedRole = localStorage.getItem('classSpaceUserRole') || 'wykladowca';
+        
+        if (savedRole === 'admin') {
+            document.getElementById('btn-wykladowca').style.display = 'block';
+            document.getElementById('btn-portiernia').style.display = 'block';
+            document.getElementById('btn-admin').style.display = 'block';
+        } else if (savedRole === 'portiernia') {
+            document.getElementById('btn-wykladowca').style.display = 'none';
+            document.getElementById('btn-admin').style.display = 'none';
+        } else {
+            document.getElementById('btn-portiernia').style.display = 'none';
+            document.getElementById('btn-admin').style.display = 'none';
+        }
+
+        switchAppRole(savedRole);
+        setTimeout(checkNotifications, 1500);
+    }
+});
