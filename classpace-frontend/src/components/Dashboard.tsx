@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
 import LecturerView from './LecturerView';
+import ReceptionView from './ReceptionView';
 
 interface DashboardProps {
     onLogout: () => void;
@@ -57,7 +58,14 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                             Wykładowca
                         </button>
                     )}
-                    {/* W przyszłości dodamy tu przyciski do Portierni i Admina */}
+                    {(role === 'portiernia' || role === 'admin') && (
+                        <button 
+                            className={`btn-role ${role === 'portiernia' ? 'active' : ''}`}
+                            onClick={() => setRole('portiernia')}
+                        >
+                            Portiernia
+                        </button>
+                    )}
                 </div>
 
                 {/* --- GŁÓWNY WIDOK --- */}
@@ -65,10 +73,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                     <LecturerView />
                 )}
                 
-                {role === 'portiernia' && (
-                    <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        Widok portierni w przygotowaniu...
-                    </div>
+                {(role === 'portiernia' || role === 'admin') && (
+                    <ReceptionView />
                 )}
                 
             </div>
