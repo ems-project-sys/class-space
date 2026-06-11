@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
+import LecturerView from './LecturerView';
 
 interface DashboardProps {
     onLogout: () => void;
 }
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-    // Pobieramy dane zalogowanego użytkownika z pamięci przeglądarki
     const [role, setRole] = useState(localStorage.getItem('classSpaceUserRole') || 'wykladowca');
-    const [userName, setUserName] = useState(localStorage.getItem('classSpaceUserName') || 'Użytkownik');
+    const [userName] = useState(localStorage.getItem('classSpaceUserName') || 'Użytkownik');
 
     const handleLogout = async () => {
-        // Zapisujemy wylogowanie w logach systemowych przez nasz serwis
         await ApiService.addSystemLog("SYSTEM", "SYSTEM", userName, "Wylogowanie z systemu.");
         localStorage.removeItem('classSpaceUserName');
         localStorage.removeItem('classSpaceUserRole');
@@ -26,7 +25,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
         localStorage.setItem('classSpaceTheme', newTheme);
     };
 
-    // Ustawienie zapisanego motywu po załadowaniu
     useEffect(() => {
         const savedTheme = localStorage.getItem('classSpaceTheme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -49,13 +47,29 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                     </div>
                 </div>
 
-                {/* Sekcja tymczasowa - tutaj za moment wstawimy formularze i mapę */}
-                <div style={{ padding: '30px', textAlign: 'center', backgroundColor: 'var(--input-bg)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                    <h2 style={{ margin: '0 0 10px 0', color: 'var(--primary)' }}>Zalogowano pomyślnie!</h2>
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                        Witaj, <strong>{userName}</strong>. Twój poziom dostępu to: <span className="badge">{role.toUpperCase()}</span>
-                    </p>
+                {/* --- NAWIGACJA RÓL --- */}
+                <div className="role-selector">
+                    {(role === 'wykladowca' || role === 'admin') && (
+                        <button 
+                            className={`btn-role ${role === 'wykladowca' ? 'active' : ''}`}
+                            onClick={() => setRole('wykladowca')}
+                        >
+                            Wykładowca
+                        </button>
+                    )}
+                    {/* W przyszłości dodamy tu przyciski do Portierni i Admina */}
                 </div>
+
+                {/* --- GŁÓWNY WIDOK --- */}
+                {(role === 'wykladowca' || role === 'admin') && (
+                    <LecturerView />
+                )}
+                
+                {role === 'portiernia' && (
+                    <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        Widok portierni w przygotowaniu...
+                    </div>
+                )}
                 
             </div>
         </div>
