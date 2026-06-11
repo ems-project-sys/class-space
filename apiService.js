@@ -30,7 +30,7 @@ async function hashPassword(password) {
 }
 
 // 3. Nasz główny Serwis (Interfejs API)
-const ApiService = {
+export const ApiService = {
 
     // ------------------------------------------
     // AUTORYZACJA (LOGIN / REJESTRACJA)
