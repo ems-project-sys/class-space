@@ -1,3 +1,1 @@
-declare module '*apiService.js' {
-    export const ApiService: any;
-}
+export declare const ApiService: any;
