@@ -20,17 +20,14 @@ export default function ReceptionView() {
     const userName = localStorage.getItem('classSpaceUserName') || 'Portiernia';
 
     useEffect(() => {
-        // Subskrypcja na salę
         const unsubscribe = ApiService.subscribeToRooms((fetchedRooms: Room[]) => {
             setRooms(fetchedRooms);
         });
 
-        // "Żywy" zegar odświeżany co sekundę
         const timerInterval = setInterval(() => {
             setCurrentTime(new Date().toLocaleTimeString('pl-PL'));
         }, 1000);
 
-        // Sprzątanie procesów w tle, gdy komponent zostanie zamknięty
         return () => {
             if (typeof unsubscribe === 'function') unsubscribe();
             clearInterval(timerInterval);
