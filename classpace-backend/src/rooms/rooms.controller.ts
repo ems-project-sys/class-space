@@ -1,4 +1,12 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
+import { RoomsService, Room } from './rooms.service';
 
-@Controller('rooms')
-export class RoomsController {}
+@Controller('api/rooms')
+export class RoomsController {
+    constructor(private readonly roomsService: RoomsService) {}
+
+    @Get()
+    getAllRooms(): Room[] {
+        return this.roomsService.findAll();
+    }
+}
