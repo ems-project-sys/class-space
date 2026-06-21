@@ -48,35 +48,27 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                     </div>
                 </div>
 
-                {/* --- NAWIGACJA RÓL --- */}
+                {/* --- ROLE NAVIGATION --- */}
                 <div className="role-selector">
-                    {(role === 'wykladowca' || role === 'admin') && (
-                        <button 
-                            className={`btn-role ${role === 'wykladowca' ? 'active' : ''}`}
-                            onClick={() => setRole('wykladowca')}
-                        >
-                            Wykładowca
-                        </button>
-                    )}
-                    {(role === 'portiernia' || role === 'admin') && (
-                        <button 
-                            className={`btn-role ${role === 'portiernia' ? 'active' : ''}`}
-                            onClick={() => setRole('portiernia')}
-                        >
-                            Portiernia
-                        </button>
-                    )}
-                </div>
+                    <div className="current-role-badge">
+                        Active Profile: {role.toUpperCase()}
+                    </div>
+                </div>  
 
-                {/* --- GŁÓWNY WIDOK --- */}
-                {(role === 'wykladowca' || role === 'admin') && (
-                    <LecturerView />
-                )}
                 
-                {(role === 'portiernia' || role === 'admin') && (
-                    <ReceptionView />
+                {/* --- MAIN VIEW RENDERER --- */}
+                {role === 'wykladowca' && <LecturerView />}
+                {role === 'portiernia' && <ReceptionView />}
+                {role === 'admin' && (
+                    <div style={{ padding: '20px', border: '1px solid var(--danger)' }}>
+                        <h3 style={{ color: 'var(--danger)' }}>Admin Access Granted</h3>
+                        <p>Zarządzanie systemem w przygotowaniu...</p>
+                        {/* <AdminView /> will be implemented later */}
+                    </div>
                 )}
-                
+                {!['wykladowca', 'portiernia', 'admin'].includes(role) && (
+                    <div style={{ color: 'var(--danger)' }}>Brak uprawnień do wyświetlenia systemu.</div>
+                )}
             </div>
         </div>
     );
