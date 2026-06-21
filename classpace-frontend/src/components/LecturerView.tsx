@@ -35,17 +35,22 @@ export default function LecturerView() {
     const [selectedMapRoomId, setSelectedMapRoomId] = useState<string | null>(null);
 
     useEffect(() => {
+        const fetchAvailableRooms = async () => {
+            if (!date || !time || !duration) return;
+            
+            const endTime = calculateEndTime(time, duration);
+            const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
+            
+            setRooms(availableRooms);
+        };
+
+        fetchAvailableRooms();
+    }, [date, time, duration]);
+
+    useEffect(() => {
         const now = new Date();
         setDate(now.toLocaleDateString('en-CA'));
         setTime(`${String((now.getHours() + 1) % 24).padStart(2, '0')}:00`);
-
-        const unsubscribe = ApiService.subscribeToRooms((fetchedRooms: Room[]) => {
-            setRooms(fetchedRooms);
-        });
-
-        return () => {
-            if (typeof unsubscribe === 'function') unsubscribe();
-        };
     }, []);
 
     const calculateEndTime = (start: string, durationMin: string) => {

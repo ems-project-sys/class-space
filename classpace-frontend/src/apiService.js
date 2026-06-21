@@ -1,8 +1,8 @@
 // ==========================================
-// apiService.js - Warstwa Komunikacji z Bazą Danych
+// apiService.js - Database Communication Layer
 // ==========================================
 
-// 1. Konfiguracja i Inicjalizacja Bazy (Tylko tutaj!)
+// 1. Database Configuration and Initialization (Only here!)
 const firebaseConfig = {
     apiKey: "AIzaSyAYMzJvCR17JzfHvMuLuF_aGmptu0derGU",
     authDomain: "classspace-faeb3.firebaseapp.com",
@@ -13,14 +13,14 @@ const firebaseConfig = {
     measurementId: "G-7NT2WYYT21"
 };
 
-// Sprawdzamy, czy Firebase został załadowany z pliku HTML
+// Check if Firebase is loaded from HTML file
 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
 const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
 
-// 2. Wewnętrzne funkcje pomocnicze (Niewidoczne dla reszty aplikacji)
+// 2. Internal helper functions (Invisible to the rest of the application)
 async function hashPassword(password) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
@@ -29,33 +29,33 @@ async function hashPassword(password) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 3. Nasz główny Serwis (Interfejs API)
+// 3. Our main Service (API Interface)
 export const ApiService = {
 
     // ------------------------------------------
-    // AUTORYZACJA (LOGIN / REJESTRACJA)
+    // AUTHORIZATION (LOGIN / REGISTRATION)
     // ------------------------------------------
     
     loginUser: async (email, password) => {
-        if (!db) throw new Error("Brak połączenia z bazą danych.");
+        if (!db) throw new Error("No database connection.");
         
         const hashedPassword = await hashPassword(password);
         const userDoc = await db.collection('users').doc(email).get();
 
         if (!userDoc.exists || userDoc.data().password !== hashedPassword) {
-            throw new Error("Błędny adres e-mail lub hasło.");
+            throw new Error("Invalid email address or password.");
         }
         return userDoc.data();
     },
 
     registerUser: async (name, email, password, role) => {
-        if (!db) throw new Error("Brak połączenia z bazą danych.");
+        if (!db) throw new Error("No database connection.");
 
         const userRef = db.collection('users').doc(email);
         const docSnap = await userRef.get();
         
         if (docSnap.exists) {
-            throw new Error("Konto z tym adresem e-mail już istnieje.");
+            throw new Error("Account with this email already exists.");
         }
 
         const hashedPassword = await hashPassword(password);
@@ -71,10 +71,10 @@ export const ApiService = {
     },
 
     // ------------------------------------------
-    // ZARZĄDZANIE SALAMI (REZERWACJE)
+    // ROOM MANAGEMENT (RESERVATIONS)
     // ------------------------------------------
 
-    // Funkcja pobierająca listę sal "na żywo"
+    // Function returning live rooms list
     subscribeToRooms: (onRoomsUpdatedCallback) => {
         if (!db) return;
         return db.collection('sale').onSnapshot(snapshot => {
@@ -84,7 +84,7 @@ export const ApiService = {
         });
     },
 
-    // Inicjalizacja domyślnych sal, jeśli baza jest pusta
+    // Initialize default rooms if database is empty
     initDefaultRooms: async (defaultRoomsData) => {
         if (!db) return;
         const snapshot = await db.collection('sale').get();
@@ -95,14 +95,29 @@ export const ApiService = {
                 batch.set(roomRef, room);
             });
             await batch.commit();
-            console.log("Inicjalizacja domyślnych sal w Firebase zakończona.");
+            console.log("Default rooms initialization in Firebase finished.");
+        }
+    },
+
+    // Fetching available rooms based on date and time (for calendar)
+    fetchAvailableRooms: async (targetDate, targetStartTime, targetEndTime) => {
+        try {
+            const response = await fetch(`http://localhost:3000/api/rooms/available?date=${targetDate}&startTime=${targetStartTime}&endTime=${targetEndTime}`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error("Error fetching available rooms:", error);
+            return [];
         }
     },
 
     bookRoom: async (roomId, userName, subject, startTime, endTime) => {
-        if (!db) throw new Error("Brak połączenia z bazą danych.");
+        if (!db) throw new Error("No database connection.");
         
-        // Zapis do historii rezerwacji
+        // Save to reservation history
         await db.collection('rezerwacje').add({
             roomId: roomId,
             userName: userName,
@@ -112,7 +127,7 @@ export const ApiService = {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Aktualizacja statusu fizycznej sali
+        // Update physical room status
         await db.collection('sale').doc(roomId).update({
             isBooked: true,
             bookedBy: userName,
@@ -132,7 +147,7 @@ export const ApiService = {
     },
 
     // ------------------------------------------
-    // USTERKI I ZGŁOSZENIA
+    // ISSUES AND REPORTS
     // ------------------------------------------
 
     reportIssue: async (roomId, desc, userName) => {
@@ -163,13 +178,13 @@ export const ApiService = {
     resolveIssue: async (roomId, desc, userName) => {
         if (!db) return;
 
-        // Resetowanie błędu w sali
+        // Reset issue status in room
         await db.collection('sale').doc(roomId).update({
             hasIssue: false,
             issueDesc: ''
         });
 
-        // Wyszukanie i zamknięcie otwartych zgłoszeń
+        // Search and close open reports
         const awarieSnapshot = await db.collection('awarie')
             .where('roomId', '==', roomId)
             .where('status', '==', 'Otwarta')
@@ -185,7 +200,7 @@ export const ApiService = {
                 dataNaprawy: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // Wysłanie powiadomienia do zgłaszającego
+            // Send notification to the reporter
             if (data.zgloszonePrzez) {
                 await db.collection('powiadomienia').add({
                     uzytkownik: data.zgloszonePrzez,
@@ -206,11 +221,11 @@ export const ApiService = {
     },
 
     // ------------------------------------------
-    // ADMINISTRACJA I LOGI
+    // ADMINISTRATION AND LOGS
     // ------------------------------------------
 
     resetAllRooms: async (roomsArray) => {
-        if (!db) throw new Error("Brak połączenia z bazą danych.");
+        if (!db) throw new Error("No database connection.");
         const batch = db.batch();
         roomsArray.forEach(room => {
             const roomRef = db.collection('sale').doc(room.id);
