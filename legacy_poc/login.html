@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClassSpace - Logowanie</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+
+<body>
+
+    <div id="login-page">
+        <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn-login">Alternatywny Motyw</button>
+
+        <div class="auth-card">
+            <div class="header auth-header">
+                <h1>ClassSpace</h1>
+                <p>Zaloguj się do systemu</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="tab-btn active" onclick="switchTab('login')" id="tab-login">Logowanie</button>
+                <button class="tab-btn" onclick="switchTab('register')" id="tab-register">Rejestracja</button>
+            </div>
+
+            <div id="auth-alert-box" class="alert"></div>
+
+            <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="login-email">Adres E-mail</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 25px;">
+                    <label for="login-password">Hasło</label>
+                    <input type="password" id="login-password" required>
+                    <button type="button" class="toggle-password"
+                        onclick="togglePasswordVisibility('login-password')">Pokaż</button>
+                </div>
+                <div class="captcha-container">
+                    <span class="captcha-equation" id="login-captcha-eq">? + ? =</span>
+                    <input type="text" id="login-captcha-input" class="captcha-input" required autocomplete="off">
+                    <button type="button" class="captcha-refresh" onclick="generateCaptcha('login')">Zmień</button>
+                </div>
+                <button type="submit" class="btn-submit">Zaloguj się</button>
+            </form>
+
+            <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>Rola systemowa</label>
+                    <div class="role-grid">
+                        <div class="role-option selected" id="role-wykladowca" onclick="selectRole('wykladowca')">Wykładowca</div>
+                        <div class="role-option" id="role-portiernia" onclick="selectRole('portiernia')">Portiernia</div>
+                        <div class="role-option" id="role-admin" onclick="selectRole('admin')">Admin</div>
+                    </div>
+                    <input type="hidden" id="register-role" value="wykladowca">
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="register-name">Imię i Nazwisko</label>
+                    <input type="text" id="register-name" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="register-email">Służbowy E-mail</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="register-password">Hasło</label>
+                    <input type="password" id="register-password" required oninput="checkPasswordStrength()">
+                    <button type="button" class="toggle-password"
+                        onclick="togglePasswordVisibility('register-password')">Pokaż</button>
+                    <div class="password-strength">
+                        <div class="strength-bar" id="strength-bar"></div>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label for="register-confirm">Potwierdź Hasło</label>
+                    <input type="password" id="register-confirm" required>
+                </div>
+                <div class="captcha-container">
+                    <span class="captcha-equation" id="register-captcha-eq">? + ? =</span>
+                    <input type="text" id="register-captcha-input" class="captcha-input" required autocomplete="off">
+                    <button type="button" class="captcha-refresh" onclick="generateCaptcha('register')">Zmień</button>
+                </div>
+                <button type="submit" class="btn-submit">Utwórz konto</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="apiService.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
