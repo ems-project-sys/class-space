@@ -143,7 +143,17 @@ export default function LecturerView() {
                     </div>
                     <div className="input-group">
                         <label>Godzina rozpoczęcia</label>
-                        <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+                        <select value={time} onChange={e => setTime(e.target.value)}>
+                            {/* Academic/Standard time blocks */}
+                            <option value="08:00">08:00</option>
+                            <option value="09:45">09:45</option>
+                            <option value="11:30">11:30</option>
+                            <option value="13:15">13:15</option>
+                            <option value="15:00">15:00</option>
+                            <option value="16:45">16:45</option>
+                            <option value="18:30">18:30</option>
+                            <option value="20:15">20:15</option>
+                        </select>
                     </div>
                     <div className="input-group">
                         <label>Czas trwania (min)</label>
