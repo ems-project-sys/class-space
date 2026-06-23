@@ -6,10 +6,6 @@ interface Room {
     type: string;
     capacity: number;
     hasProjector: boolean;
-    isBooked: boolean;
-    bookedBy: string;
-    time: string;
-    subject: string;
     hasIssue: boolean;
     issueDesc: string;
 }
@@ -34,31 +30,30 @@ export default function LecturerView() {
     
     const [selectedMapRoomId, setSelectedMapRoomId] = useState<string | null>(null);
 
+    const calculateEndTime = (start: string, durationMin: string) => {
+        if (!start) return '';
+        let [hours, minutes] = start.split(':').map(Number);
+        minutes += parseInt(durationMin);
+        hours += Math.floor(minutes / 60);
+        return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+    };
+
     useEffect(() => {
         const fetchAvailableRooms = async () => {
             if (!date || !time || !duration) return;
-            
             const endTime = calculateEndTime(time, duration);
             const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
-            
             setRooms(availableRooms);
+            setSelectedMapRoomId(null); 
         };
-
         fetchAvailableRooms();
-    }, [date, time, duration]);
+    }, [date, time, duration, minCapacity, reqProjector]);
 
     useEffect(() => {
         const now = new Date();
         setDate(now.toLocaleDateString('en-CA'));
         setTime(`${String((now.getHours() + 1) % 24).padStart(2, '0')}:00`);
     }, []);
-
-    const calculateEndTime = (start: string, durationMin: string) => {
-        let [hours, minutes] = start.split(':').map(Number);
-        minutes += parseInt(durationMin);
-        hours += Math.floor(minutes / 60);
-        return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
-    };
 
     const handleBookRoom = async (roomId: string) => {
         if (!subject.trim()) {
@@ -69,19 +64,15 @@ export default function LecturerView() {
         try {
             await ApiService.bookRoom(roomId, userName, subject, time, endTime);
             await ApiService.addSystemLog("REZERWACJA", roomId, userName, `Zajęcia: ${subject}`);
+            
+            const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
+            setRooms(availableRooms);
+            
             setSelectedMapRoomId(null);
             setSubject(''); 
+            alert(`Pomyślnie zarezerwowano salę ${roomId}`);
         } catch (error: any) {
             alert(error.message || "Błąd rezerwacji.");
-        }
-    };
-
-    const handleCancelRoom = async (roomId: string) => {
-        try {
-            await ApiService.cancelRoom(roomId);
-            await ApiService.addSystemLog("OPUSZCZENIE", roomId, userName, `Zwolnione przez: Wykładowca`);
-        } catch (error) {
-            alert("Błąd anulowania.");
         }
     };
 
@@ -90,6 +81,7 @@ export default function LecturerView() {
         if (issueDescription && issueDescription.trim() !== '') {
             try {
                 await ApiService.reportIssue(roomId, issueDescription.trim(), userName);
+                alert("Zgłoszono usterkę.");
             } catch (error) {
                 alert("Błąd zgłaszania usterki.");
             }
@@ -103,14 +95,14 @@ export default function LecturerView() {
                 <div className="floor-grid">
                     {roomIds.map(id => {
                         const room = rooms.find(r => r.id === id);
-                        if (!room) return null;
-
-                        const isAvailable = !room.isBooked && room.capacity >= minCapacity && (!reqProjector || room.hasProjector);
-                        let statusClass = isAvailable ? 'status-free' : 'status-taken';
-                        if (room.hasIssue && isAvailable) statusClass = 'status-issue';
-                        if (selectedMapRoomId === id) statusClass = 'status-selected';
-
                         const extraStyle = (id === 'AULA_A' || id === 'SPORT') ? { gridColumn: 'span 2' } : {};
+
+                        const isAvailable = room && room.capacity >= minCapacity && (!reqProjector || room.hasProjector);
+
+                        let statusClass = 'status-taken'; 
+                        if (isAvailable && !room.hasIssue) statusClass = 'status-free';
+                        if (isAvailable && room.hasIssue) statusClass = 'status-issue';
+                        if (selectedMapRoomId === id && isAvailable) statusClass = 'status-selected';
 
                         return (
                             <div 
@@ -120,7 +112,7 @@ export default function LecturerView() {
                                 onClick={() => isAvailable ? setSelectedMapRoomId(selectedMapRoomId === id ? null : id) : null}
                             >
                                 {id}
-                                <small>{room.type}</small>
+                                {room && <small>{room.type}</small>}
                             </div>
                         );
                     })}
@@ -177,7 +169,7 @@ export default function LecturerView() {
                 <div className="map-legend">
                     <div className="legend-item"><div className="legend-box status-free"></div> Dostępne</div>
                     <div className="legend-item"><div className="legend-box status-issue"></div> Usterka</div>
-                    <div className="legend-item"><div className="legend-box status-taken"></div> Niedostępne</div>
+                    <div className="legend-item"><div className="legend-box status-taken"></div> Niedostępne / Nie pasują</div>
                     <div className="legend-item"><div className="legend-box status-selected"></div> Wybór</div>
                 </div>
                 <div id="floors-container">
@@ -201,35 +193,23 @@ export default function LecturerView() {
                 );
             })()}
 
-            <div className="section-title" style={{ marginTop: '40px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Dostępne sale</div>
+            <div className="section-title" style={{ marginTop: '40px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Idealnie dopasowane sale</div>
             <div>
                 {filteredRooms.length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', padding: '10px' }}>Brak sal spełniających kryteria filtracji.</div>
+                    <div style={{ color: 'var(--text-muted)', padding: '10px' }}>Brak wolnych sal spełniających Twoje kryteria. Zmień filtry lub czas.</div>
                 ) : (
-                    filteredRooms.map(room => {
-                        const isMyBooking = room.bookedBy === userName;
-                        return (
-                            <div key={room.id} className="room-card">
-                                <div className="room-info">
-                                    <h3>SALA {room.id}</h3>
-                                    <p>Typ: {room.type} | Pojemność: {room.capacity} osób</p>
-                                    {room.hasIssue && <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '5px' }}><strong>Usterka:</strong> {room.issueDesc}</p>}
-                                </div>
-                                <div>
-                                    {isMyBooking ? (
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button className="btn btn-return" onClick={() => handleReportIssue(room.id)}>Usterka</button>
-                                            <button className="btn btn-cancel" onClick={() => handleCancelRoom(room.id)}>Anuluj</button>
-                                        </div>
-                                    ) : room.isBooked ? (
-                                        <span className="badge badge-taken">Zajęta: {room.subject}</span>
-                                    ) : (
-                                        <button className="btn btn-reserve" onClick={() => handleBookRoom(room.id)}>Rezerwuj</button>
-                                    )}
-                                </div>
+                    filteredRooms.map(room => (
+                        <div key={room.id} className="room-card" style={{ borderLeft: '4px solid var(--success)' }}>
+                            <div className="room-info">
+                                <h3>SALA {room.id}</h3>
+                                <p>Typ: {room.type} | Pojemność: {room.capacity} osób</p>
+                                {room.hasIssue && <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '5px' }}><strong>Usterka:</strong> {room.issueDesc}</p>}
                             </div>
-                        );
-                    })
+                            <div>
+                                <button className="btn btn-reserve" onClick={() => handleBookRoom(room.id)}>Rezerwuj</button>
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
         </div>
