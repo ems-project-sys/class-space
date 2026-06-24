@@ -1,7 +1,8 @@
 // ==========================================
 // apiService.js - Database Communication Layer
 // ==========================================
-
+import { initializeApp } from "firebase/app";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 // 1. Database Configuration and Initialization (Only here!)
 const firebaseConfig = {
     apiKey: "AIzaSyAYMzJvCR17JzfHvMuLuF_aGmptu0derGU",
@@ -12,6 +13,9 @@ const firebaseConfig = {
     appId: "1:402654981974:web:f8011e1fe8022d421130f7",
     measurementId: "G-7NT2WYYT21"
 };
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 // Check if Firebase is loaded from HTML file
 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
@@ -29,6 +33,15 @@ async function hashPassword(password) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+const waitForUser = () => {
+    return new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe();
+            resolve(user);
+        }, reject);
+    });
+};
+
 // 3. Our main Service (API Interface)
 export const ApiService = {
 
@@ -45,6 +58,19 @@ export const ApiService = {
         if (!userDoc.exists || userDoc.data().password !== hashedPassword) {
             throw new Error("Invalid email address or password.");
         }
+
+        // 2. MIGRACJA I PADDING: Firebase Auth wymaga minimum 6 znaków.
+        const firebaseAuthPassword = password.padEnd(6, '0');
+
+        try {
+            // Próbujemy zalogować użytkownika w oficjalnym systemie Firebase Auth
+            await signInWithEmailAndPassword(auth, email, firebaseAuthPassword);
+        } catch (error) {
+            // Jeśli konta nie ma, tworzymy je z dopełnionym, bezpiecznym hasłem
+            await createUserWithEmailAndPassword(auth, email, firebaseAuthPassword);
+        }
+
+        // 3. Zwracamy dane z Firestore, aby React mógł zaktualizować interfejs
         return userDoc.data();
     },
 
@@ -102,10 +128,30 @@ export const ApiService = {
     // Fetching available rooms based on date and time (for calendar)
     fetchAvailableRooms: async (targetDate, targetStartTime, targetEndTime) => {
         try {
-            const response = await fetch(`http://localhost:3000/api/rooms/available?date=${targetDate}&startTime=${targetStartTime}&endTime=${targetEndTime}`);
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+            // Korzystamy z globalnego obiektu 'auth' zdefiniowanego na górze pliku
+            const user = await waitForUser();
+            
+            if (!user) {
+                console.warn("Użytkownik nie jest zalogowany – brak dostępu do API.");
+                return [];
             }
+
+            // Prosimy Firebase o wygenerowanie/odświeżenie naszego tokenu JWT
+            const idToken = await user.getIdToken();
+
+            // Wysyłamy zapytanie do NestJS
+            const response = await fetch(`http://localhost:3000/api/rooms/available?date=${targetDate}&startTime=${targetStartTime}&endTime=${targetEndTime}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${idToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
             const data = await response.json();
             return data;
         } catch (error) {
