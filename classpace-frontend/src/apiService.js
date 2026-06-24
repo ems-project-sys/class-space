@@ -59,18 +59,18 @@ export const ApiService = {
             throw new Error("Invalid email address or password.");
         }
 
-        // 2. MIGRACJA I PADDING: Firebase Auth wymaga minimum 6 znaków.
+        // 2. MIGRATION AND PADDING: Firebase Auth requires at least 6 characters.
         const firebaseAuthPassword = password.padEnd(6, '0');
 
         try {
-            // Próbujemy zalogować użytkownika w oficjalnym systemie Firebase Auth
+            // Attempt to log in the user in the official Firebase Auth system
             await signInWithEmailAndPassword(auth, email, firebaseAuthPassword);
         } catch (error) {
-            // Jeśli konta nie ma, tworzymy je z dopełnionym, bezpiecznym hasłem
+            // If the account doesn't exist, we create it with a padded, secure password
             await createUserWithEmailAndPassword(auth, email, firebaseAuthPassword);
         }
 
-        // 3. Zwracamy dane z Firestore, aby React mógł zaktualizować interfejs
+        // 3. Return data from Firestore so React can update the interface
         return userDoc.data();
     },
 
@@ -128,18 +128,18 @@ export const ApiService = {
     // Fetching available rooms based on date and time (for calendar)
     fetchAvailableRooms: async (targetDate, targetStartTime, targetEndTime) => {
         try {
-            // Korzystamy z globalnego obiektu 'auth' zdefiniowanego na górze pliku
+            // We use the global 'auth' object defined at the top of the file
             const user = await waitForUser();
             
             if (!user) {
-                console.warn("Użytkownik nie jest zalogowany – brak dostępu do API.");
+                console.warn("User is not logged in - no API access.");
                 return [];
             }
 
-            // Prosimy Firebase o wygenerowanie/odświeżenie naszego tokenu JWT
+            // We ask Firebase to generate/refresh our JWT token
             const idToken = await user.getIdToken();
 
-            // Wysyłamy zapytanie do NestJS
+            // We send the request to NestJS
             const response = await fetch(`http://localhost:3000/api/rooms/available?date=${targetDate}&startTime=${targetStartTime}&endTime=${targetEndTime}`, {
                 method: 'GET',
                 headers: {

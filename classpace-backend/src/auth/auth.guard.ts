@@ -7,7 +7,7 @@ import * as path from 'path';
 @Injectable()
 export class AuthGuard implements CanActivate {
     constructor() {
-        // Inicjalizacja Firebase Admin (odpala się tylko raz przy starcie serwera)
+        // Initialize Firebase Admin (runs only once on server startup)
         if (!getApps().length) {
             admin.initializeApp({
                 credential: cert(path.resolve(process.cwd(), 'firebase-adminsdk.json')),
@@ -19,24 +19,24 @@ export class AuthGuard implements CanActivate {
         const request = context.switchToHttp().getRequest();
         const authHeader = request.headers.authorization;
 
-        // 1. Sprawdzamy, czy zapytanie ma w ogóle nagłówek "Authorization"
+        // 1. Check if the request has an "Authorization" header at all
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw new UnauthorizedException('Brak dostępu: Wymagany token JWT');
+            throw new UnauthorizedException('Access denied: JWT token required');
         }
 
-        // 2. Wyciągamy sam token (ucinamy słowo "Bearer ")
+        // 2. Extract the token itself (cut off the word "Bearer ")
         const token = authHeader.split(' ')[1];
 
         try {
-            // 3. Odszyfrowanie i weryfikacja kryptograficzna
+            // 3. Cryptographic decryption and verification
             const decodedToken = await getAuth().verifyIdToken(token);
             
-            // 4. Sukces! Rejestrujemy dane użytkownika wewnątrz zapytania i wpuszczamy dalej
+            // 4. Success! We register user data inside the request and allow it to proceed
             request.user = decodedToken;
             return true; 
         } catch (error) {
-            // Token wygasł, został sfałszowany lub klucz jest zły
-            throw new UnauthorizedException('Brak dostępu: Nieprawidłowy lub wygasły token JWT');
+            // Token expired, was forged or the key is invalid
+            throw new UnauthorizedException('Access denied: Invalid or expired JWT token');
         }
     }
 }

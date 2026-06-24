@@ -19,7 +19,7 @@ export interface Room {
 
 @Injectable()
 export class RoomsService {
-    // Symulacja bazy danych z jedną "złośliwą" rezerwacją z Use Case'u promotora
+    // Database simulation with one "malicious" reservation from the promoter's Use Case
     private rooms: Room[] = [
         { id: '101', type: 'Sala Ćwiczeniowa', capacity: 30, hasProjector: true, hasIssue: false, issueDesc: '', bookings: [] },
         { 
@@ -32,12 +32,12 @@ export class RoomsService {
         { id: 'LAB_1', type: 'Laboratorium IT', capacity: 15, hasProjector: true, hasIssue: false, issueDesc: '', bookings: [] }
     ];
 
-    // Funkcja matematyczna sprawdzająca kolizję czasową (podstawa naszych przyszłych testów)
+    // Mathematical function checking for time collision (the basis of our future tests)
     private isTimeOverlapping(start1: string, end1: string, start2: string, end2: string): boolean {
         return start1 < end2 && start2 < end1;
     }
 
-    // Algorytm filtrujący
+    // Filtering algorithm
     getAvailableRooms(targetDate: string, targetStartTime: string, targetEndTime: string): Room[] {
         return this.rooms.filter(room => {
             if (room.hasIssue) return false;
@@ -47,7 +47,7 @@ export class RoomsService {
                 return this.isTimeOverlapping(targetStartTime, targetEndTime, booking.startTime, booking.endTime);
             });
 
-            return !hasConflict; // Sala zostaje na liście, tylko jeśli nie ma konfliktu
+            return !hasConflict; // Room stays on the list only if there is no conflict
         });
     }
 }

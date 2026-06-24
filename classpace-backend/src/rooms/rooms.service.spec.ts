@@ -20,29 +20,29 @@ describe('RoomsService', () => {
         const testDate = '2026-06-19';
 
         it('should return room 102 when requested time is BEFORE the existing booking', () => {
-            // Istniejąca rezerwacja: 18:00 - 20:00. Szukamy sali w godzinach 15:00 - 17:00.
+            // Existing booking: 18:00 - 20:00. We are looking for a room from 15:00 - 17:00.
             const availableRooms = service.getAvailableRooms(testDate, '15:00', '17:00');
             const room102 = availableRooms.find(r => r.id === '102');
             
-            // Oczekujemy, że sala zostanie znaleziona (będzie dostępna)
+            // We expect the room to be found (available)
             expect(room102).toBeDefined();
         });
 
         it('should filter out room 102 when requested time OVERLAPS with existing booking', () => {
-            // Istniejąca rezerwacja: 18:00 - 20:00. Szukamy sali w godzinach 17:00 - 19:00 (Konflikt!).
+            // Existing booking: 18:00 - 20:00. We are looking for a room from 17:00 - 19:00 (Conflict!).
             const availableRooms = service.getAvailableRooms(testDate, '17:00', '19:00');
             const room102 = availableRooms.find(r => r.id === '102');
             
-            // Oczekujemy, że sala NIE zostanie znaleziona (zostanie odfiltrowana)
+            // We expect the room NOT to be found (filtered out)
             expect(room102).toBeUndefined(); 
         });
 
         it('should return room 102 when requested time is AFTER the existing booking', () => {
-            // Istniejąca rezerwacja: 18:00 - 20:00. Szukamy sali w godzinach 20:00 - 22:00.
+            // Existing booking: 18:00 - 20:00. We are looking for a room from 20:00 - 22:00.
             const availableRooms = service.getAvailableRooms(testDate, '20:00', '22:00');
             const room102 = availableRooms.find(r => r.id === '102');
             
-            // Oczekujemy, że sala zostanie znaleziona (będzie dostępna)
+            // We expect the room to be found (available)
             expect(room102).toBeDefined();
         });
     });
