@@ -1,12 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { RoomsService, Room } from './rooms.service';
-import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('api/rooms')
 export class RoomsController {
     constructor(private readonly roomsService: RoomsService) {}
 
-    @UseGuards(AuthGuard)
     @Get('available')
     getAvailableRooms(
         @Query('date') date: string,
