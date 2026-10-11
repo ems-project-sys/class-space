@@ -57,3 +57,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Firebase Service Account Key
 firebase-adminsdk.json
+
+/src/generated/prisma
