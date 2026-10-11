@@ -11,3 +11,110 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  createdAt    DateTime @default(now())
+
+  reservations   Reservation[]
+  reportedIssues Issue[]        @relation("IssueReporter")
+  resolvedIssues Issue[]        @relation("IssueResolver")
+  notifications  Notification[]
+  issueLogs      IssueLog[]
+  systemLogs     SystemLog[]
+}
+
+model Room {
+  id           String   @id
+  type         String
+  capacity     Int
+  hasProjector Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservations Reservation[]
+  issues       Issue[]
+  issueLogs    IssueLog[]
+  systemLogs   SystemLog[]
+}
+
+model Reservation {
+  id          String    @id @default(cuid())
+  roomId      String
+  userId      String
+  date        String
+  startTime   String
+  endTime     String
+  subject     String
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([roomId, date])
+  @@index([userId])
+}
+
+model Issue {
+  id          String    @id @default(cuid())
+  roomId      String
+  reporterId  String
+  resolverId  String?
+  description String
+  status      String    @default("OPEN")
+  resolution  String?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  room     Room  @relation(fields: [roomId], references: [id])
+  reporter User  @relation("IssueReporter", fields: [reporterId], references: [id])
+  resolver User? @relation("IssueResolver", fields: [resolverId], references: [id])
+
+  @@index([roomId, status])
+}
+
+model IssueLog {
+  id          String   @id @default(cuid())
+  roomId      String
+  userId      String
+  action      String
+  description String
+  createdAt   DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([roomId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  roomId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+  room Room? @relation(fields: [roomId], references: [id])
+
+  @@index([createdAt])
+}
