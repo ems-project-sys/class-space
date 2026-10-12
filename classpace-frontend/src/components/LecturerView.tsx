@@ -62,8 +62,7 @@ export default function LecturerView() {
         }
         const endTime = calculateEndTime(time, duration);
         try {
-            await ApiService.bookRoom(roomId, userName, subject, time, endTime);
-            await ApiService.addSystemLog("REZERWACJA", roomId, userName, `Zajęcia: ${subject}`);
+            await ApiService.bookRoom(roomId, date, subject, time, endTime);
             
             const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
             setRooms(availableRooms);

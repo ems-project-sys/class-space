@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ApiService } from '../apiService.js';
 import LecturerView from './LecturerView';
 import ReceptionView from './ReceptionView';
 
@@ -12,9 +11,9 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     const [userName] = useState(localStorage.getItem('classSpaceUserName') || 'Użytkownik');
 
     const handleLogout = async () => {
-        await ApiService.addSystemLog("SYSTEM", "SYSTEM", userName, "Wylogowanie z systemu.");
         localStorage.removeItem('classSpaceUserName');
         localStorage.removeItem('classSpaceUserRole');
+        localStorage.removeItem('classSpaceAccessToken');
         onLogout();
     };
 
