@@ -12,6 +12,8 @@ interface Room {
     subject: string;
     hasIssue: boolean;
     issueDesc: string;
+    issueId?: string;
+    reservationId?: string;
 }
 
 export default function ReceptionView() {
@@ -38,7 +40,9 @@ export default function ReceptionView() {
         const resolutionDescription = prompt(`Zamykasz usterkę w sali ${roomId}.\nPodaj krótki opis naprawy (np. "Wymieniono kabel HDMI"):`);
         if (resolutionDescription && resolutionDescription.trim() !== '') {
             try {
-                await ApiService.resolveIssue(roomId, resolutionDescription.trim(), userName);
+                const room = rooms.find((item) => item.id === roomId);
+                if (!room?.issueId) return;
+                await ApiService.resolveIssue(room.issueId, resolutionDescription.trim());
                 alert(`Usterka w sali ${roomId} została oznaczona jako naprawiona.`);
             } catch (error: any) {
                 alert(error.message || "Błąd podczas rozwiązywania usterki.");
@@ -48,7 +52,9 @@ export default function ReceptionView() {
 
     const handleCancelBooking = async (roomId: string) => {
         try {
-            await ApiService.cancelRoom(roomId);
+            const room = rooms.find((item) => item.id === roomId);
+            if (!room?.reservationId) return;
+            await ApiService.cancelRoom(room.reservationId);
             await ApiService.addSystemLog("OPUSZCZENIE", roomId, userName, `Zwolnione przez moduł: Portiernia`);
             alert(`Zakończono rezerwację dla sali ${roomId}.`);
         } catch (error: any) {

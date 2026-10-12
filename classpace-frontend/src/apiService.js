@@ -60,6 +60,30 @@ export const ApiService = {
         return request(`/rooms/available?${params.toString()}`);
     },
 
+    subscribeToRooms: (onRoomsUpdatedCallback) => {
+        let active = true;
+
+        const loadRooms = async () => {
+            try {
+                const date = new Date().toISOString().slice(0, 10);
+                const rooms = await request(`/rooms?date=${date}`);
+                if (active) {
+                    onRoomsUpdatedCallback(rooms);
+                }
+            } catch (error) {
+                console.error('Error fetching room summaries:', error);
+            }
+        };
+
+        loadRooms();
+        const interval = setInterval(loadRooms, 5000);
+
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
+    },
+
     bookRoom: (roomId, date, subject, startTime, endTime) => request('/reservations', {
         method: 'POST',
         body: JSON.stringify({ roomId, date, subject, startTime, endTime }),
@@ -71,16 +95,13 @@ export const ApiService = {
 
     addSystemLog: async () => undefined,
 
-    reportIssue: async () => {
-        throw new Error('Issue reporting API is not migrated yet.');
-    },
+    reportIssue: (roomId, description) => request('/issues', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, description }),
+    }),
 
-    resolveIssue: async () => {
-        throw new Error('Issue resolution API is not migrated yet.');
-    },
-
-    subscribeToRooms: (onRoomsUpdatedCallback) => {
-        onRoomsUpdatedCallback([]);
-        return () => undefined;
-    },
+    resolveIssue: (issueId, resolution) => request(`/issues/${issueId}/resolve`, {
+        method: 'PATCH',
+        body: JSON.stringify({ resolution }),
+    }),
 };

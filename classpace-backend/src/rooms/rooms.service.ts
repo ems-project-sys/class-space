@@ -18,6 +18,15 @@ export interface Room {
     bookings: Booking[];
 }
 
+export interface RoomSummary extends Room {
+    isBooked: boolean;
+    bookedBy: string;
+    subject: string;
+    time: string;
+    issueId?: string;
+    reservationId?: string;
+}
+
 @Injectable()
 export class RoomsService {
     constructor(private readonly prisma: PrismaService) {}
@@ -55,5 +64,54 @@ export class RoomsService {
             issueDesc: '',
             bookings: [],
         }));
+    }
+
+    async getRoomSummaries(targetDate: string): Promise<RoomSummary[]> {
+        const rooms = await this.prisma.room.findMany({
+            include: {
+                reservations: {
+                    where: {
+                        date: targetDate,
+                        status: 'ACTIVE',
+                    },
+                    include: {
+                        user: {
+                            select: { name: true },
+                        },
+                    },
+                    orderBy: { startTime: 'asc' },
+                    take: 1,
+                },
+                issues: {
+                    where: { status: 'OPEN' },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+            },
+            orderBy: { id: 'asc' },
+        });
+
+        return rooms.map((room) => {
+            const reservation = room.reservations[0];
+            const issue = room.issues[0];
+
+            return {
+                id: room.id,
+                type: room.type,
+                capacity: room.capacity,
+                hasProjector: room.hasProjector,
+                hasIssue: Boolean(issue),
+                issueDesc: issue?.description || '',
+                issueId: issue?.id,
+                bookings: [],
+                isBooked: Boolean(reservation),
+                reservationId: reservation?.id,
+                bookedBy: reservation?.user.name || '',
+                subject: reservation?.subject || '',
+                time: reservation
+                    ? `${reservation.startTime} - ${reservation.endTime}`
+                    : '',
+            };
+        });
     }
 }
