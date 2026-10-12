@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import { RoomsController } from './rooms.controller';
 import { RoomsService } from './rooms.service';
@@ -17,6 +18,12 @@ describe('RoomsController', () => {
             room: {
               findMany: jest.fn(),
             },
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            verify: jest.fn(),
           },
         },
       ],
