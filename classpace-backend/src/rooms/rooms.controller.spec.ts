@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma.service';
 import { RoomsController } from './rooms.controller';
 import { RoomsService } from './rooms.service';
 
@@ -8,7 +9,17 @@ describe('RoomsController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RoomsController],
-      providers: [RoomsService],
+      providers: [
+        RoomsService,
+        {
+          provide: PrismaService,
+          useValue: {
+            room: {
+              findMany: jest.fn(),
+            },
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<RoomsController>(RoomsController);

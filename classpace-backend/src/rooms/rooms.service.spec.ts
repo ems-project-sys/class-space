@@ -1,12 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PrismaService } from '../prisma.service';
 import { RoomsService } from './rooms.service';
 
 describe('RoomsService', () => {
     let service: RoomsService;
+    const prisma = {
+        room: {
+            findMany: jest.fn(),
+        },
+    };
 
     beforeEach(async () => {
+        prisma.room.findMany.mockResolvedValue([
+            {
+                id: '101',
+                type: 'Sala Ćwiczeniowa',
+                capacity: 30,
+                hasProjector: true,
+            },
+        ]);
+
         const module: TestingModule = await Test.createTestingModule({
-            providers: [RoomsService],
+            providers: [
+                RoomsService,
+                {
+                    provide: PrismaService,
+                    useValue: prisma,
+                },
+            ],
         }).compile();
 
         service = module.get<RoomsService>(RoomsService);
@@ -16,34 +37,39 @@ describe('RoomsService', () => {
         expect(service).toBeDefined();
     });
 
-    describe('Room Availability Algorithm', () => {
-        const testDate = '2026-06-19';
+    describe('Room Availability Query', () => {
+        it('returns rooms mapped from Prisma', async () => {
+            const availableRooms = await service.getAvailableRooms(
+                '2026-06-19',
+                '15:00',
+                '17:00',
+            );
 
-        it('should return room 102 when requested time is BEFORE the existing booking', () => {
-            // Existing booking: 18:00 - 20:00. We are looking for a room from 15:00 - 17:00.
-            const availableRooms = service.getAvailableRooms(testDate, '15:00', '17:00');
-            const room102 = availableRooms.find(r => r.id === '102');
-            
-            // We expect the room to be found (available)
-            expect(room102).toBeDefined();
-        });
-
-        it('should filter out room 102 when requested time OVERLAPS with existing booking', () => {
-            // Existing booking: 18:00 - 20:00. We are looking for a room from 17:00 - 19:00 (Conflict!).
-            const availableRooms = service.getAvailableRooms(testDate, '17:00', '19:00');
-            const room102 = availableRooms.find(r => r.id === '102');
-            
-            // We expect the room NOT to be found (filtered out)
-            expect(room102).toBeUndefined(); 
-        });
-
-        it('should return room 102 when requested time is AFTER the existing booking', () => {
-            // Existing booking: 18:00 - 20:00. We are looking for a room from 20:00 - 22:00.
-            const availableRooms = service.getAvailableRooms(testDate, '20:00', '22:00');
-            const room102 = availableRooms.find(r => r.id === '102');
-            
-            // We expect the room to be found (available)
-            expect(room102).toBeDefined();
+            expect(availableRooms).toEqual([
+                {
+                    id: '101',
+                    type: 'Sala Ćwiczeniowa',
+                    capacity: 30,
+                    hasProjector: true,
+                    hasIssue: false,
+                    issueDesc: '',
+                    bookings: [],
+                },
+            ]);
+            expect(prisma.room.findMany).toHaveBeenCalledWith({
+                where: {
+                    issues: { none: { status: 'OPEN' } },
+                    reservations: {
+                        none: {
+                            date: '2026-06-19',
+                            status: 'ACTIVE',
+                            startTime: { lt: '17:00' },
+                            endTime: { gt: '15:00' },
+                        },
+                    },
+                },
+                orderBy: { id: 'asc' },
+            });
         });
     });
 });
