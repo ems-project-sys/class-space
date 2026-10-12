@@ -10,9 +10,9 @@ export class RoomsController {
         @Query('date') date: string,
         @Query('startTime') startTime: string,
         @Query('endTime') endTime: string,
-    ): Room[] {
+    ): Promise<Room[]> {
         if (!date || !startTime || !endTime) {
-            return []; // Zabezpieczenie: puste zapytanie zwraca pustą listę
+            return Promise.resolve([]);
         }
         return this.roomsService.getAvailableRooms(date, startTime, endTime);
     }
