@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 
 function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    useEffect(() => {
-        const user = localStorage.getItem('classSpaceUserName');
-        if (user) {
-            setIsAuthenticated(true);
-        }
-    }, []);
+    const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(
+        localStorage.getItem('classSpaceUserName') &&
+        localStorage.getItem('classSpaceAccessToken'),
+    ));
 
     if (!isAuthenticated) {
         return <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />;

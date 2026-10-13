@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
 
+const getErrorMessage = (error: unknown, fallback: string) => (
+    error instanceof Error ? error.message : fallback
+);
+
 interface Room {
     id: string;
     type: string;
@@ -22,8 +26,8 @@ export default function LecturerView() {
     const userName = localStorage.getItem('classSpaceUserName') || 'Nieznany';
 
     const [subject, setSubject] = useState('');
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
+    const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+    const [time, setTime] = useState(() => `${String((new Date().getHours() + 1) % 24).padStart(2, '0')}:00`);
     const [duration, setDuration] = useState('90');
     const [minCapacity, setMinCapacity] = useState(10);
     const [reqProjector, setReqProjector] = useState(false);
@@ -49,12 +53,6 @@ export default function LecturerView() {
         fetchAvailableRooms();
     }, [date, time, duration, minCapacity, reqProjector]);
 
-    useEffect(() => {
-        const now = new Date();
-        setDate(now.toLocaleDateString('en-CA'));
-        setTime(`${String((now.getHours() + 1) % 24).padStart(2, '0')}:00`);
-    }, []);
-
     const handleBookRoom = async (roomId: string) => {
         if (!subject.trim()) {
             alert('Wypełnij Temat zajęć przed rezerwacją.');
@@ -70,8 +68,8 @@ export default function LecturerView() {
             setSelectedMapRoomId(null);
             setSubject(''); 
             alert(`Pomyślnie zarezerwowano salę ${roomId}`);
-        } catch (error: any) {
-            alert(error.message || "Błąd rezerwacji.");
+        } catch (error: unknown) {
+            alert(getErrorMessage(error, "Błąd rezerwacji."));
         }
     };
 
@@ -79,9 +77,9 @@ export default function LecturerView() {
         const issueDescription = prompt(`Zgłaszasz usterkę w Sali ${roomId}.\nKrótko opisz problem:`);
         if (issueDescription && issueDescription.trim() !== '') {
             try {
-                await ApiService.reportIssue(roomId, issueDescription.trim(), userName);
+                await ApiService.reportIssue(roomId, issueDescription.trim());
                 alert("Zgłoszono usterkę.");
-            } catch (error) {
+            } catch {
                 alert("Błąd zgłaszania usterki.");
             }
         }

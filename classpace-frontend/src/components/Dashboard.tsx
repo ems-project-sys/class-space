@@ -7,10 +7,9 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onLogout }: DashboardProps) {
-    const [role, setRole] = useState(localStorage.getItem('classSpaceUserRole') || 'wykladowca');
-    const [userName] = useState(localStorage.getItem('classSpaceUserName') || 'Użytkownik');
+    const [role] = useState(localStorage.getItem('classSpaceUserRole') || 'wykladowca');
 
-    const handleLogout = async () => {
+    const handleLogout = () => {
         localStorage.removeItem('classSpaceUserName');
         localStorage.removeItem('classSpaceUserRole');
         localStorage.removeItem('classSpaceAccessToken');

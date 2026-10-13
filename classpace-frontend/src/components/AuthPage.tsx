@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { ApiService } from '../apiService.js'; 
 
+const getErrorMessage = (error: unknown, fallback: string) => (
+    error instanceof Error ? error.message : fallback
+);
+
 export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     const [isLoginTab, setIsLoginTab] = useState(true);
     const [name, setName] = useState('');
@@ -12,7 +16,6 @@ export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => voi
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Wywołujemy serwis dokładnie tak samo jak w starym pliku
             const userData = await ApiService.loginUser(email, password);
             localStorage.setItem('classSpaceUserRole', userData.role);
             localStorage.setItem('classSpaceUserName', userData.name);
@@ -22,8 +25,8 @@ export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => voi
             setTimeout(() => {
                 onLoginSuccess();
             }, 1000);
-        } catch (error: any) {
-            setAlertMsg({ text: error.message || 'Wystąpił błąd', type: 'danger' });
+        } catch (error: unknown) {
+            setAlertMsg({ text: getErrorMessage(error, 'Wystąpił błąd'), type: 'danger' });
         }
     };
 
@@ -43,8 +46,8 @@ export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => voi
             setTimeout(() => {
                 onLoginSuccess();
             }, 500);
-        } catch (error: any) {
-            setAlertMsg({ text: error.message || 'Wystąpił błąd rejestracji.', type: 'danger' });
+        } catch (error: unknown) {
+            setAlertMsg({ text: getErrorMessage(error, 'Wystąpił błąd rejestracji.'), type: 'danger' });
         }
     };
 

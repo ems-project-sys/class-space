@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
 
+const getErrorMessage = (error: unknown, fallback: string) => (
+    error instanceof Error ? error.message : fallback
+);
+
 interface Room {
     id: string;
     type: string;
@@ -19,7 +23,6 @@ interface Room {
 export default function ReceptionView() {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [currentTime, setCurrentTime] = useState<string>('');
-    const userName = localStorage.getItem('classSpaceUserName') || 'Portiernia';
 
     useEffect(() => {
         const unsubscribe = ApiService.subscribeToRooms((fetchedRooms: Room[]) => {
@@ -44,8 +47,8 @@ export default function ReceptionView() {
                 if (!room?.issueId) return;
                 await ApiService.resolveIssue(room.issueId, resolutionDescription.trim());
                 alert(`Usterka w sali ${roomId} została oznaczona jako naprawiona.`);
-            } catch (error: any) {
-                alert(error.message || "Błąd podczas rozwiązywania usterki.");
+            } catch (error: unknown) {
+                alert(getErrorMessage(error, "Błąd podczas rozwiązywania usterki."));
             }
         }
     };
@@ -55,9 +58,8 @@ export default function ReceptionView() {
             const room = rooms.find((item) => item.id === roomId);
             if (!room?.reservationId) return;
             await ApiService.cancelRoom(room.reservationId);
-            await ApiService.addSystemLog("OPUSZCZENIE", roomId, userName, `Zwolnione przez moduł: Portiernia`);
             alert(`Zakończono rezerwację dla sali ${roomId}.`);
-        } catch (error: any) {
+        } catch {
             alert("Błąd podczas kończenia rezerwacji.");
         }
     };
