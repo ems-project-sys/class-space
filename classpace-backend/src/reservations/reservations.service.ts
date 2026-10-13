@@ -60,7 +60,9 @@ export class ReservationsService {
         });
 
         if (conflictingReservation) {
-          throw new ConflictException('Room is already reserved for this time.');
+          throw new ConflictException(
+            'Room is already reserved for this time.',
+          );
         }
 
         return transaction.reservation.create({

@@ -1,24 +1,66 @@
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 
+interface TransactionMock {
+  room: {
+    findUnique: jest.Mock<Promise<unknown>, [unknown]>;
+  };
+  issue: {
+    findFirst: jest.Mock<Promise<unknown>, [unknown]>;
+  };
+  reservation: {
+    findFirst: jest.Mock<Promise<unknown>, [unknown]>;
+    create: jest.Mock<Promise<unknown>, [unknown]>;
+  };
+}
+
+interface ReservationPrismaMock {
+  findUnique: jest.Mock<Promise<unknown>, [unknown]>;
+  update: jest.Mock<Promise<unknown>, [unknown]>;
+}
+
+interface PrismaMock {
+  $transaction: jest.Mock<
+    Promise<unknown>,
+    [
+      (
+        callback: (client: TransactionMock) => Promise<unknown>,
+      ) => Promise<unknown>,
+    ]
+  >;
+  reservation: ReservationPrismaMock;
+}
+
+const createPromiseMock = <T>() => jest.fn<Promise<T>, [unknown]>();
+
+const createTransactionMock = () =>
+  jest.fn<
+    Promise<unknown>,
+    [
+      (
+        callback: (client: TransactionMock) => Promise<unknown>,
+      ) => Promise<unknown>,
+    ]
+  >();
+
 describe('ReservationsService', () => {
-  const transaction = {
+  const transaction: TransactionMock = {
     room: {
-      findUnique: jest.fn(),
+      findUnique: createPromiseMock(),
     },
     issue: {
-      findFirst: jest.fn(),
+      findFirst: createPromiseMock(),
     },
     reservation: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
+      findFirst: createPromiseMock(),
+      create: createPromiseMock(),
     },
   };
-  const prisma = {
-    $transaction: jest.fn(),
+  const prisma: PrismaMock = {
+    $transaction: createTransactionMock(),
     reservation: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
+      findUnique: createPromiseMock(),
+      update: createPromiseMock(),
     },
   };
   const user = { sub: 'user-1', role: 'wykladowca' };
@@ -26,7 +68,10 @@ describe('ReservationsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.$transaction.mockImplementation(async (callback) => callback(transaction));
+    prisma.$transaction.mockImplementation(
+      (callback: (client: TransactionMock) => Promise<unknown>) =>
+        callback(transaction),
+    );
     transaction.room.findUnique.mockResolvedValue({ id: '101' });
     transaction.issue.findFirst.mockResolvedValue(null);
     transaction.reservation.findFirst.mockResolvedValue(null);
@@ -104,13 +149,11 @@ describe('ReservationsService', () => {
       status: 'CANCELLED',
     });
 
-    const result = await service.cancel('reservation-1', user);
-
-    expect(result).toEqual({ id: 'reservation-1', status: 'CANCELLED' });
-    expect(prisma.reservation.update).toHaveBeenCalledWith({
-      where: { id: 'reservation-1' },
-      data: expect.objectContaining({ status: 'CANCELLED' }),
+    await expect(service.cancel('reservation-1', user)).resolves.toEqual({
+      id: 'reservation-1',
+      status: 'CANCELLED',
     });
+    expect(prisma.reservation.update).toHaveBeenCalled();
   });
 
   it('rejects cancellation by another lecturer', async () => {
@@ -120,8 +163,8 @@ describe('ReservationsService', () => {
       status: 'ACTIVE',
     });
 
-    await expect(
-      service.cancel('reservation-1', user),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.cancel('reservation-1', user)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

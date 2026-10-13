@@ -1,6 +1,17 @@
-import { Body, Controller, Delete, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import type { AuthenticatedUser, CreateReservationInput } from './reservations.service';
+import type {
+  AuthenticatedUser,
+  CreateReservationInput,
+} from './reservations.service';
 import { ReservationsService } from './reservations.service';
 
 interface AuthenticatedRequest {
