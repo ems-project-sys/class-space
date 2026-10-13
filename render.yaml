@@ -2,8 +2,10 @@ services:
   - type: web
     name: classpace-backend
     runtime: node
+    plan: free
     rootDir: classpace-backend
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    buildCommand: npm ci && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy
     startCommand: npm run start:prod
     healthCheckPath: /health
     envVars:
@@ -16,8 +18,9 @@ services:
       - key: FRONTEND_URL
         sync: false
 
-  - type: static
+  - type: web
     name: classpace-frontend
+    runtime: static
     rootDir: classpace-frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -27,5 +30,6 @@ services:
 
 databases:
   - name: classpace-db
+    plan: free
     databaseName: classspace
     user: classpace_app
