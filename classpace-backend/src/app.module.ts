@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { IssuesModule } from './issues/issues.module';
 import { PrismaModule } from './prisma.module';
@@ -29,6 +30,7 @@ const validateConfig = (config: Record<string, unknown>) => {
       isGlobal: true,
       validate: validateConfig,
     }),
+    AiModule,
     AuthModule,
     IssuesModule,
     PrismaModule,
