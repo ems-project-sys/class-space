@@ -1,22 +1,28 @@
-import { useState, useEffect } from 'react';
-import AuthPage from './components/AuthPage';
-import Dashboard from './components/Dashboard';
+import React, { useState } from 'react';
+import { AuthPage } from './components/AuthPage';
+import { Dashboard } from './components/Dashboard';
 
-function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+export default function App() {
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
-    useEffect(() => {
-        const user = localStorage.getItem('classSpaceUserName');
-        if (user) {
-            setIsAuthenticated(true);
-        }
-    }, []);
+  const handleLogout = () => {
+    setUserRole(null);
+    setUserName('');
+  };
 
-    if (!isAuthenticated) {
-        return <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />;
-    }
+  const handleLogin = (role: string, name: string) => {
+    setUserRole(role);
+    setUserName(name);
+  };
 
-    return <Dashboard onLogout={() => setIsAuthenticated(false)} />;
+  return (
+    <>
+      {!userRole ? (
+        <AuthPage onLoginSuccess={handleLogin} />
+      ) : (
+        <Dashboard userRole={userRole} userName={userName} onLogout={handleLogout} />
+      )}
+    </>
+  );
 }
-
-export default App;

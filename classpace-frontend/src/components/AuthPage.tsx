@@ -1,88 +1,60 @@
-import { useState } from 'react';
-import { ApiService } from '../apiService.js'; 
+import React, { useState } from 'react';
 
-export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => void }) {
-    const [isLoginTab, setIsLoginTab] = useState(true);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [alertMsg, setAlertMsg] = useState<{ text: string, type: 'success' | 'danger' } | null>(null);
+export const AuthPage = ({ onLoginSuccess }: { onLoginSuccess: (role: string, name: string) => void }) => {
+  const [isAdminGranted, setIsAdminGranted] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            // Wywołujemy serwis dokładnie tak samo jak w starym pliku
-            const userData = await ApiService.loginUser(email, password);
-            localStorage.setItem('classSpaceUserRole', userData.role);
-            localStorage.setItem('classSpaceUserName', userData.name);
-            
-            setAlertMsg({ text: 'Logowanie udane. Przekierowywanie...', type: 'success' });
-            await ApiService.addSystemLog("SYSTEM", "SYSTEM", userData.name, "Pomyślne logowanie do systemu.");
-            
-            setTimeout(() => {
-                onLoginSuccess();
-            }, 1000);
-        } catch (error: any) {
-            setAlertMsg({ text: error.message || 'Wystąpił błąd', type: 'danger' });
-        }
-    };
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
+    
+    // Dynamiczne wyciąganie imienia z maila (np. kacper@... -> Kacper)
+    const namePart = email.split('@')[0];
+    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
 
-    return (
-        <div id="login-page">
-            <div className="auth-card">
-                <div className="header auth-header">
-                    <h1>ClassSpace</h1>
-                    <p>Zaloguj się do systemu</p>
-                </div>
+    if (role === 'admin') {
+      setIsAdminGranted(true);
+      setTimeout(() => {
+        onLoginSuccess('admin', formattedName);
+      }, 4000);
+    } else {
+      onLoginSuccess('user', formattedName);
+    }
+  };
 
-                <div className="auth-tabs">
-                    <button 
-                        className={`tab-btn ${isLoginTab ? 'active' : ''}`} 
-                        onClick={() => setIsLoginTab(true)}
-                    >
-                        Logowanie
-                    </button>
-                    <button 
-                        className={`tab-btn ${!isLoginTab ? 'active' : ''}`} 
-                        onClick={() => setIsLoginTab(false)}
-                    >
-                        Rejestracja
-                    </button>
-                </div>
+  return (
+    <>
+      <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <form onSubmit={handleLogin} style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '420px', border: '1px solid var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>ClassSpace Login</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Zaloguj się, aby uzyskać dostęp do systemu uczelni.</p>
+          </div>
+          
+          <div className="form-group">
+            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Adres Email</label>
+            <input type="email" placeholder="np. imie.nazwisko@student.merito.pl" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          
+          <div className="form-group" style={{ marginBottom: '2rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Hasło</label>
+            <input type="password" placeholder="••••••••" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.85rem', fontSize: '1.1rem' }}>
+            Wejdź do systemu
+          </button>
+        </form>
+      </div>
 
-                {alertMsg && (
-                    <div className={`alert alert-${alertMsg.type}`} style={{ display: 'block' }}>
-                        {alertMsg.text}
-                    </div>
-                )}
-
-                {isLoginTab ? (
-                    <form className="auth-form active" onSubmit={handleLogin}>
-                        <div className="input-group" style={{ marginBottom: '15px' }}>
-                            <label>Adres E-mail</label>
-                            <input 
-                                type="email" 
-                                value={email} 
-                                onChange={(e) => setEmail(e.target.value)} 
-                                required 
-                            />
-                        </div>
-                        <div className="input-group" style={{ marginBottom: '25px' }}>
-                            <label>Hasło</label>
-                            <input 
-                                type="password" 
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)} 
-                                required 
-                            />
-                        </div>
-                        <button type="submit" className="btn-submit">Zaloguj się</button>
-                    </form>
-                ) : (
-                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                        Rejestracja w przygotowaniu. Przełącz na logowanie.
-                    </div>
-                )}
-            </div>
+      {isAdminGranted && (
+        <div className="admin-overlay">
+          <h1 className="admin-title">Admin Access Granted</h1>
+          <p style={{ color: '#9ca3af', fontSize: '1.2rem' }}>Ładowanie zaszyfrowanego modułu zarządzania...</p>
+          <div className="progress-bar-container"><div className="progress-bar"></div></div>
         </div>
-    );
-}
+      )}
+    </>
+  );
+};
