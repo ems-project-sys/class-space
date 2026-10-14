@@ -639,3 +639,67 @@ input:disabled {
     background-color: var(--warning);
     color: #000000;
 }
+
+.assistant-panel {
+    margin: 0 0 40px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--card-bg), var(--input-bg));
+}
+
+.assistant-heading h3 {
+    margin: 0 0 4px;
+    color: var(--text-main);
+}
+
+.assistant-heading p {
+    margin: 0 0 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.assistant-form {
+    display: flex;
+    gap: 10px;
+}
+
+.assistant-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--input-bg);
+    color: var(--text-main);
+}
+
+.assistant-form button {
+    padding: 0 18px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--primary);
+    color: var(--btn-text);
+    font-weight: 700;
+}
+
+.assistant-form button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.assistant-message {
+    margin: 12px 0 0;
+    color: var(--success);
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+    .assistant-form {
+        flex-direction: column;
+    }
+
+    .assistant-form button {
+        min-height: 42px;
+    }
+}

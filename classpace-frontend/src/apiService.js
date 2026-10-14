@@ -60,6 +60,11 @@ export const ApiService = {
         return request(`/rooms/available?${params.toString()}`);
     },
 
+    parseRoomPrompt: (prompt) => request('/ai/parse', {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+    }),
+
     subscribeToRooms: (onRoomsUpdatedCallback) => {
         let active = true;
 

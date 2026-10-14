@@ -31,6 +31,10 @@ export default function LecturerView() {
     const [duration, setDuration] = useState('90');
     const [minCapacity, setMinCapacity] = useState(10);
     const [reqProjector, setReqProjector] = useState(false);
+    const [roomType, setRoomType] = useState<string | null>(null);
+    const [assistantPrompt, setAssistantPrompt] = useState('');
+    const [assistantMessage, setAssistantMessage] = useState<string | null>(null);
+    const [isAssistantLoading, setIsAssistantLoading] = useState(false);
     
     const [selectedMapRoomId, setSelectedMapRoomId] = useState<string | null>(null);
 
@@ -85,6 +89,49 @@ export default function LecturerView() {
         }
     };
 
+    const handleAssistantQuery = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!assistantPrompt.trim()) return;
+
+        setIsAssistantLoading(true);
+        setAssistantMessage(null);
+
+        try {
+            const response = await ApiService.parseRoomPrompt(assistantPrompt);
+            const { filters } = response;
+
+            setReqProjector(filters.needsProjector);
+            setRoomType(filters.type);
+            if (filters.capacity !== null) {
+                setMinCapacity(filters.capacity);
+            }
+
+            const appliedFilters = [
+                filters.needsProjector ? 'rzutnik' : null,
+                filters.type,
+                filters.capacity ? `min. ${filters.capacity} osób` : null,
+            ].filter(Boolean);
+            setAssistantMessage(
+                appliedFilters.length > 0
+                    ? `Zastosowano: ${appliedFilters.join(', ')}`
+                    : 'Nie rozpoznano konkretnych filtrów.',
+            );
+        } catch (error: unknown) {
+            setAssistantMessage(getErrorMessage(error, 'Nie udało się przeanalizować zapytania.'));
+        } finally {
+            setIsAssistantLoading(false);
+        }
+    };
+
+    const matchesRoomType = (room: Room) => {
+        if (!roomType) return true;
+        if (roomType === 'Aula') return room.type.includes('Aula');
+        if (roomType === 'Wykładowa') return room.type.includes('Wykładowa');
+        if (roomType === 'Ćwiczeniowa') return room.type.includes('Ćwiczeniowa');
+        if (roomType === 'Lab. Komputerowe') return room.type.includes('Laboratorium');
+        return true;
+    };
+
     const renderMap = () => {
         return Object.entries(campusLayout).map(([floorName, roomIds]) => (
             <div key={floorName} className="map-floor">
@@ -94,7 +141,7 @@ export default function LecturerView() {
                         const room = rooms.find(r => r.id === id);
                         const extraStyle = (id === 'AULA_A' || id === 'SPORT') ? { gridColumn: 'span 2' } : {};
 
-                        const isAvailable = room && room.capacity >= minCapacity && (!reqProjector || room.hasProjector);
+                        const isAvailable = room && room.capacity >= minCapacity && (!reqProjector || room.hasProjector) && matchesRoomType(room);
 
                         let statusClass = 'status-taken'; 
                         if (isAvailable && !room.hasIssue) statusClass = 'status-free';
@@ -118,7 +165,7 @@ export default function LecturerView() {
         ));
     };
 
-    const filteredRooms = rooms.filter(room => room.capacity >= minCapacity && (!reqProjector || room.hasProjector));
+    const filteredRooms = rooms.filter(room => room.capacity >= minCapacity && (!reqProjector || room.hasProjector) && matchesRoomType(room));
 
     return (
         <div className="view-section active">
@@ -169,6 +216,27 @@ export default function LecturerView() {
                     <input type="checkbox" id="req-projector" checked={reqProjector} onChange={e => setReqProjector(e.target.checked)} />
                     <label htmlFor="req-projector" style={{ textTransform: 'none', fontSize: '14px' }}>Wymaga rzutnika</label>
                 </div>
+            </div>
+
+            <div className="assistant-panel">
+                <div className="assistant-heading">
+                    <div>
+                        <h3>Asystent wyboru sali</h3>
+                        <p>Opisz potrzeby zajęć, a asystent ustawi filtry.</p>
+                    </div>
+                </div>
+                <form className="assistant-form" onSubmit={handleAssistantQuery}>
+                    <input
+                        value={assistantPrompt}
+                        onChange={(event) => setAssistantPrompt(event.target.value)}
+                        placeholder="np. wykład dla 80 osób z rzutnikiem"
+                        aria-label="Opis potrzeb dotyczących sali"
+                    />
+                    <button type="submit" disabled={isAssistantLoading}>
+                        {isAssistantLoading ? 'Analizuję...' : 'Zastosuj'}
+                    </button>
+                </form>
+                {assistantMessage && <p className="assistant-message">{assistantMessage}</p>}
             </div>
 
             <div className="section-title">Mapa kampusu</div>

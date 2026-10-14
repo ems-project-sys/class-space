@@ -1,0 +1,1265 @@
+﻿diff --git a/classpace-frontend/src/App.tsx b/classpace-frontend/src/App.tsx
+index 474a6ea..7224bfa 100644
+--- a/classpace-frontend/src/App.tsx
++++ b/classpace-frontend/src/App.tsx
+@@ -1,22 +1,28 @@
+-import { useState, useEffect } from 'react';
+-import AuthPage from './components/AuthPage';
+-import Dashboard from './components/Dashboard';
++import React, { useState } from 'react';
++import { AuthPage } from './components/AuthPage';
++import { Dashboard } from './components/Dashboard';
+ 
+-function App() {
+-    const [isAuthenticated, setIsAuthenticated] = useState(false);
++export default function App() {
++  const [userRole, setUserRole] = useState<string | null>(null);
++  const [userName, setUserName] = useState<string>('');
+ 
+-    useEffect(() => {
+-        const user = localStorage.getItem('classSpaceUserName');
+-        if (user) {
+-            setIsAuthenticated(true);
+-        }
+-    }, []);
++  const handleLogout = () => {
++    setUserRole(null);
++    setUserName('');
++  };
+ 
+-    if (!isAuthenticated) {
+-        return <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+-    }
++  const handleLogin = (role: string, name: string) => {
++    setUserRole(role);
++    setUserName(name);
++  };
+ 
+-    return <Dashboard onLogout={() => setIsAuthenticated(false)} />;
+-}
+-
+-export default App;
+\ No newline at end of file
++  return (
++    <>
++      {!userRole ? (
++        <AuthPage onLoginSuccess={handleLogin} />
++      ) : (
++        <Dashboard userRole={userRole} userName={userName} onLogout={handleLogout} />
++      )}
++    </>
++  );
++}
+\ No newline at end of file
+diff --git a/classpace-frontend/src/components/AuthPage.tsx b/classpace-frontend/src/components/AuthPage.tsx
+index 54d90f9..9e30687 100644
+--- a/classpace-frontend/src/components/AuthPage.tsx
++++ b/classpace-frontend/src/components/AuthPage.tsx
+@@ -1,88 +1,60 @@
+-import { useState } from 'react';
+-import { ApiService } from '../apiService.js'; 
++import React, { useState } from 'react';
+ 
+-export default function AuthPage({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+-    const [isLoginTab, setIsLoginTab] = useState(true);
+-    const [email, setEmail] = useState('');
+-    const [password, setPassword] = useState('');
+-    const [alertMsg, setAlertMsg] = useState<{ text: string, type: 'success' | 'danger' } | null>(null);
++export const AuthPage = ({ onLoginSuccess }: { onLoginSuccess: (role: string, name: string) => void }) => {
++  const [isAdminGranted, setIsAdminGranted] = useState(false);
++  const [email, setEmail] = useState('');
++  const [password, setPassword] = useState('');
+ 
+-    const handleLogin = async (e: React.FormEvent) => {
+-        e.preventDefault();
+-        try {
+-            // Wywo┼éujemy serwis dok┼éadnie tak samo jak w starym pliku
+-            const userData = await ApiService.loginUser(email, password);
+-            localStorage.setItem('classSpaceUserRole', userData.role);
+-            localStorage.setItem('classSpaceUserName', userData.name);
+-            
+-            setAlertMsg({ text: 'Logowanie udane. Przekierowywanie...', type: 'success' });
+-            await ApiService.addSystemLog("SYSTEM", "SYSTEM", userData.name, "Pomy┼Ťlne logowanie do systemu.");
+-            
+-            setTimeout(() => {
+-                onLoginSuccess();
+-            }, 1000);
+-        } catch (error: any) {
+-            setAlertMsg({ text: error.message || 'Wyst─ůpi┼é b┼é─ůd', type: 'danger' });
+-        }
+-    };
++  const handleLogin = (e: React.FormEvent) => {
++    e.preventDefault();
++    const role = email.toLowerCase().includes('admin') ? 'admin' : 'user';
++    
++    // Dynamiczne wyci─ůganie imienia z maila (np. kacper@... -> Kacper)
++    const namePart = email.split('@')[0];
++    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+ 
+-    return (
+-        <div id="login-page">
+-            <div className="auth-card">
+-                <div className="header auth-header">
+-                    <h1>ClassSpace</h1>
+-                    <p>Zaloguj si─Ö do systemu</p>
+-                </div>
++    if (role === 'admin') {
++      setIsAdminGranted(true);
++      setTimeout(() => {
++        onLoginSuccess('admin', formattedName);
++      }, 4000);
++    } else {
++      onLoginSuccess('user', formattedName);
++    }
++  };
+ 
+-                <div className="auth-tabs">
+-                    <button 
+-                        className={`tab-btn ${isLoginTab ? 'active' : ''}`} 
+-                        onClick={() => setIsLoginTab(true)}
+-                    >
+-                        Logowanie
+-                    </button>
+-                    <button 
+-                        className={`tab-btn ${!isLoginTab ? 'active' : ''}`} 
+-                        onClick={() => setIsLoginTab(false)}
+-                    >
+-                        Rejestracja
+-                    </button>
+-                </div>
++  return (
++    <>
++      <div className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++        <form onSubmit={handleLogin} style={{ background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '420px', border: '1px solid var(--border)', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
++          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
++            <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>ClassSpace Login</h2>
++            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Zaloguj si─Ö, aby uzyska─ç dost─Öp do systemu uczelni.</p>
++          </div>
++          
++          <div className="form-group">
++            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Adres Email</label>
++            <input type="email" placeholder="np. imie.nazwisko@student.merito.pl" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
++          </div>
++          
++          <div className="form-group" style={{ marginBottom: '2rem' }}>
++            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Has┼éo</label>
++            <input type="password" placeholder="ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
++          </div>
++          
++          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.85rem', fontSize: '1.1rem' }}>
++            Wejd┼║ do systemu
++          </button>
++        </form>
++      </div>
+ 
+-                {alertMsg && (
+-                    <div className={`alert alert-${alertMsg.type}`} style={{ display: 'block' }}>
+-                        {alertMsg.text}
+-                    </div>
+-                )}
+-
+-                {isLoginTab ? (
+-                    <form className="auth-form active" onSubmit={handleLogin}>
+-                        <div className="input-group" style={{ marginBottom: '15px' }}>
+-                            <label>Adres E-mail</label>
+-                            <input 
+-                                type="email" 
+-                                value={email} 
+-                                onChange={(e) => setEmail(e.target.value)} 
+-                                required 
+-                            />
+-                        </div>
+-                        <div className="input-group" style={{ marginBottom: '25px' }}>
+-                            <label>Has┼éo</label>
+-                            <input 
+-                                type="password" 
+-                                value={password} 
+-                                onChange={(e) => setPassword(e.target.value)} 
+-                                required 
+-                            />
+-                        </div>
+-                        <button type="submit" className="btn-submit">Zaloguj si─Ö</button>
+-                    </form>
+-                ) : (
+-                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+-                        Rejestracja w przygotowaniu. Prze┼é─ůcz na logowanie.
+-                    </div>
+-                )}
+-            </div>
++      {isAdminGranted && (
++        <div className="admin-overlay">
++          <h1 className="admin-title">Admin Access Granted</h1>
++          <p style={{ color: '#9ca3af', fontSize: '1.2rem' }}>┼üadowanie zaszyfrowanego modu┼éu zarz─ůdzania...</p>
++          <div className="progress-bar-container"><div className="progress-bar"></div></div>
+         </div>
+-    );
+-}
+\ No newline at end of file
++      )}
++    </>
++  );
++};
+\ No newline at end of file
+diff --git a/classpace-frontend/src/components/Dashboard.tsx b/classpace-frontend/src/components/Dashboard.tsx
+index dc8f86d..b6c0a55 100644
+--- a/classpace-frontend/src/components/Dashboard.tsx
++++ b/classpace-frontend/src/components/Dashboard.tsx
+@@ -1,75 +1,268 @@
+-import { useState, useEffect } from 'react';
+-import { ApiService } from '../apiService.js';
+-import LecturerView from './LecturerView';
+-import ReceptionView from './ReceptionView';
+-
+-interface DashboardProps {
+-    onLogout: () => void;
+-}
+-
+-export default function Dashboard({ onLogout }: DashboardProps) {
+-    const [role, setRole] = useState(localStorage.getItem('classSpaceUserRole') || 'wykladowca');
+-    const [userName] = useState(localStorage.getItem('classSpaceUserName') || 'U┼╝ytkownik');
+-
+-    const handleLogout = async () => {
+-        await ApiService.addSystemLog("SYSTEM", "SYSTEM", userName, "Wylogowanie z systemu.");
+-        localStorage.removeItem('classSpaceUserName');
+-        localStorage.removeItem('classSpaceUserRole');
+-        onLogout();
+-    };
+-
+-    const toggleTheme = () => {
+-        const html = document.documentElement;
+-        const isLight = html.getAttribute('data-theme') === 'light';
+-        const newTheme = isLight ? 'dark' : 'light';
+-        html.setAttribute('data-theme', newTheme);
+-        localStorage.setItem('classSpaceTheme', newTheme);
+-    };
+-
+-    useEffect(() => {
+-        const savedTheme = localStorage.getItem('classSpaceTheme') || 'light';
+-        document.documentElement.setAttribute('data-theme', savedTheme);
+-    }, []);
+-
+-    return (
+-        <div id="app-page">
+-            <div className="container">
+-                <div className="top-actions">
+-                    <button className="theme-toggle" onClick={toggleTheme}>Alternatywny Motyw</button>
+-                    <button className="btn btn-return" onClick={handleLogout} style={{ padding: '6px 12px', fontSize: '13px' }}>
+-                        Wyloguj
+-                    </button>
+-                </div>
+-
+-                <div className="header">
+-                    <div>
+-                        <h1>ClassSpace</h1>
+-                        <div className="subtitle">System Rezerwacji Zasob├│w</div>
+-                    </div>
+-                </div>
+-
+-                {/* --- ROLE NAVIGATION --- */}
+-                <div className="role-selector">
+-                    <div className="current-role-badge">
+-                        Active Profile: {role.toUpperCase()}
+-                    </div>
+-                </div>  
+-
+-                
+-                {/* --- MAIN VIEW RENDERER --- */}
+-                {role === 'wykladowca' && <LecturerView />}
+-                {role === 'portiernia' && <ReceptionView />}
+-                {role === 'admin' && (
+-                    <div style={{ padding: '20px', border: '1px solid var(--danger)' }}>
+-                        <h3 style={{ color: 'var(--danger)' }}>Admin Access Granted</h3>
+-                        <p>Zarz─ůdzanie systemem w przygotowaniu...</p>
+-                        {/* <AdminView /> will be implemented later */}
+-                    </div>
+-                )}
+-                {!['wykladowca', 'portiernia', 'admin'].includes(role) && (
+-                    <div style={{ color: 'var(--danger)' }}>Brak uprawnie┼ä do wy┼Ťwietlenia systemu.</div>
+-                )}
++import React, { useState, useEffect } from 'react';
++
++const ROOM_TYPES = ['Wyk┼éadowa', 'Aula', '─ćwiczeniowa', 'Lab. Komputerowe'];
++interface Room { id: string; name: string; type: string; capacity: number; hasProjector: boolean; }
++
++const mockRooms: Room[] = [
++  { id: '1', name: 'Sala 101', type: 'Wyk┼éadowa', capacity: 120, hasProjector: true },
++  { id: '2', name: 'Sala 102', type: 'Wyk┼éadowa', capacity: 90, hasProjector: true },
++  { id: '3', name: 'Sala 103', type: 'Wyk┼éadowa', capacity: 80, hasProjector: false },
++  { id: '4', name: 'Sala 104', type: 'Wyk┼éadowa', capacity: 60, hasProjector: true },
++  { id: '5', name: 'Sala 105', type: 'Wyk┼éadowa', capacity: 150, hasProjector: true },
++  { id: '6', name: 'Aula 1', type: 'Aula', capacity: 300, hasProjector: true },
++  { id: '7', name: 'Aula 2', type: 'Aula', capacity: 250, hasProjector: true },
++  { id: '8', name: 'Aula 3', type: 'Aula', capacity: 200, hasProjector: true },
++  { id: '9', name: 'Sala 201', type: '─ćwiczeniowa', capacity: 30, hasProjector: false },
++  { id: '10', name: 'Sala 202', type: '─ćwiczeniowa', capacity: 35, hasProjector: true },
++  { id: '11', name: 'Sala 203', type: '─ćwiczeniowa', capacity: 25, hasProjector: false },
++  { id: '12', name: 'Sala 204', type: '─ćwiczeniowa', capacity: 40, hasProjector: true },
++  { id: '13', name: 'Sala 205', type: '─ćwiczeniowa', capacity: 30, hasProjector: false },
++  { id: '14', name: 'Lab 1', type: 'Lab. Komputerowe', capacity: 15, hasProjector: true },
++  { id: '15', name: 'Lab 2', type: 'Lab. Komputerowe', capacity: 20, hasProjector: true },
++  { id: '16', name: 'Lab 3', type: 'Lab. Komputerowe', capacity: 15, hasProjector: false },
++  { id: '17', name: 'Lab 4', type: 'Lab. Komputerowe', capacity: 25, hasProjector: true },
++  { id: '18', name: 'Lab 5', type: 'Lab. Komputerowe', capacity: 18, hasProjector: true },
++  { id: '19', name: 'Sala 301', type: '─ćwiczeniowa', capacity: 45, hasProjector: true },
++  { id: '20', name: 'Sala 302', type: 'Wyk┼éadowa', capacity: 75, hasProjector: false },
++];
++
++export const Dashboard = ({ userRole, userName, onLogout }: { userRole: string, userName: string, onLogout: () => void }) => {
++  const [theme, setTheme] = useState<'merito' | 'dark'>('merito');
++  
++  const [selectedType, setSelectedType] = useState<string | null>(null);
++  const [needsProjector, setNeedsProjector] = useState(false);
++  const [requiredCapacity, setRequiredCapacity] = useState<string>('');
++  
++  const [aiPrompt, setAiPrompt] = useState('');
++  const [isAiThinking, setIsAiThinking] = useState(false);
++  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
++
++  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
++  const [showAdminPanel, setShowAdminPanel] = useState(false);
++  const [bookingSuccess, setBookingSuccess] = useState<any>(null);
++  const [lecturerName, setLecturerName] = useState('');
++  const [subjectName, setSubjectName] = useState('');
++
++  useEffect(() => {
++    document.documentElement.setAttribute('data-theme', theme);
++  }, [theme]);
++
++  // Tajny "Easter Egg" dla administratora - panel znikn─ů┼é z UI ca┼ékowicie.
++  const handleSecretAdminTrigger = () => {
++    if (userRole === 'admin') {
++      setShowAdminPanel(true);
++    }
++  };
++
++  const handleAIQuery = async (e: React.FormEvent) => {
++    e.preventDefault();
++    if (!aiPrompt.trim()) return;
++
++    setIsAiThinking(true);
++    setAiFeedback(null);
++
++    try {
++      const response = await fetch('http://localhost:3000/ai/parse', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ prompt: aiPrompt })
++      });
++
++      if (!response.ok) throw new Error('B┼é─ůd API');
++      
++      const data = await response.json();
++      
++      setNeedsProjector(data.filters.needsProjector);
++      setSelectedType(data.filters.type);
++      setRequiredCapacity(data.filters.capacity ? data.filters.capacity.toString() : '');
++      
++      let feedback = [];
++      if (data.filters.needsProjector) feedback.push('Rzutnik: Wymagany');
++      if (data.filters.type) feedback.push(`Typ: ${data.filters.type}`);
++      if (data.filters.capacity) feedback.push(`Miejsca: min. ${data.filters.capacity}`);
++
++      setAiFeedback(feedback.length > 0 ? `Zastosowano: ${feedback.join(', ')}` : 'Brak sprecyzowanych wymaga┼ä.');
++    } catch (error) {
++      console.error(error);
++      setAiFeedback('Brak po┼é─ůczenia z backendem (NestJS).');
++    } finally {
++      setIsAiThinking(false);
++    }
++  };
++
++  const handleBooking = (e: React.FormEvent) => {
++    e.preventDefault();
++    if (!selectedRoom) return;
++    setBookingSuccess({ roomName: selectedRoom.name, lecturer: lecturerName, subject: subjectName });
++    setSelectedRoom(null); 
++    setLecturerName(''); 
++    setSubjectName('');
++  };
++
++  const filteredRooms = mockRooms.filter(room => {
++    if (selectedType && room.type !== selectedType) return false;
++    if (needsProjector && !room.hasProjector) return false;
++    if (requiredCapacity && room.capacity < Number(requiredCapacity)) return false;
++    return true;
++  });
++
++  return (
++    <div className="container">
++      {/* NAG┼ü├ôWEK */}
++      <div className="header">
++        <div>
++          <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>
++            Witaj {userName}!
++          </h1>
++          {/* Niewidzialny spust panelu - dwukrotne klikni─Öcie otwiera admina */}
++          <p 
++            style={{ color: 'var(--text-secondary)', cursor: userRole === 'admin' ? 'pointer' : 'default', userSelect: 'none' }}
++            onDoubleClick={handleSecretAdminTrigger}
++          >
++            System Rezerwacji ClassSpace
++          </p>
++        </div>
++        <div className="header-actions">
++          <div style={{ display: 'flex', background: 'var(--bg-app)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
++            <button className={`btn ${theme === 'merito' ? 'btn-primary' : ''}`} style={{ border: 'none', padding: '0.4rem 1rem' }} onClick={() => setTheme('merito')}>Jasny</button>
++            <button className={`btn ${theme === 'dark' ? 'btn-primary' : ''}`} style={{ border: 'none', padding: '0.4rem 1rem' }} onClick={() => setTheme('dark')}>Ciemny</button>
++          </div>
++          {/* Znikn─Ö┼éa st─ůd z─Öbatka, interfejs jest w 100% czysty */}
++          <button className="btn" style={{ borderColor: '#ef4444', color: '#ef4444' }} onClick={onLogout}>Wyloguj</button>
++        </div>
++      </div>
++
++      {/* ASYSTENT AI CLASS-SPACE */}
++      <div className="ai-bar">
++        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>ÔťĘ Asystent AI</h3>
++        <form onSubmit={handleAIQuery} className="ai-input-wrapper">
++          <input 
++            type="text" 
++            className="ai-input" 
++            placeholder="W czym mog─Ö pom├│c?" 
++            value={aiPrompt}
++            onChange={(e) => setAiPrompt(e.target.value)}
++          />
++          <button type="submit" className="btn-ai" disabled={isAiThinking}>Szukaj</button>
++        </form>
++        {isAiThinking && <div className="ai-status"><div className="spinner"></div> Model analizuje zapytanie...</div>}
++        {aiFeedback && !isAiThinking && <div className="ai-status" style={{ color: '#22c55e' }}>{aiFeedback}</div>}
++      </div>
++
++      {/* R─śCZNE FILTROWANIE */}
++      <div className="filter-bar">
++        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
++          {ROOM_TYPES.map(type => (
++            <button key={type} className={`pill ${selectedType === type ? 'active' : ''}`} onClick={() => setSelectedType(selectedType === type ? null : type)}>
++              {type}
++            </button>
++          ))}
++        </div>
++        <div className="divider"></div>
++        <button className={`pill ${needsProjector ? 'active' : ''}`} onClick={() => setNeedsProjector(!needsProjector)}>
++          ­čÄą Rzutnik
++        </button>
++        <div className="divider"></div>
++        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
++          <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Studenci:</label>
++          <input 
++            type="number" 
++            placeholder="Min." 
++            className="form-input" 
++            style={{ width: '80px', padding: '0.4rem 0.75rem' }}
++            value={requiredCapacity}
++            onChange={(e) => setRequiredCapacity(e.target.value)}
++          />
++        </div>
++        <button className="btn" style={{ marginLeft: 'auto', fontSize: '0.85rem' }} onClick={() => { setSelectedType(null); setNeedsProjector(false); setRequiredCapacity(''); setAiPrompt(''); setAiFeedback(null); }}>
++          Wyczy┼Ť─ç filtry
++        </button>
++      </div>
++
++      {/* SIATKA SAL */}
++      <div className="grid">
++        {filteredRooms.map(room => (
++          <div key={room.id} className="card" onClick={() => setSelectedRoom(room)}>
++            <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{room.name}</h3>
++            <p style={{ color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '1rem' }}>{room.type}</p>
++            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
++              <span style={{ fontSize: '0.9rem' }}>­čĹĘÔÇŹ­čÄô {room.capacity} os.</span>
++              <span style={{ fontSize: '0.9rem' }}>­čÄą {room.hasProjector ? 'Rzutnik' : 'Brak'}</span>
++            </div>
++          </div>
++        ))}
++        {filteredRooms.length === 0 && (
++          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
++            Nie znaleziono sal spe┼éniaj─ůcych kryteria. Spr├│buj wyczy┼Ťci─ç filtry.
++          </div>
++        )}
++      </div>
++
++      {/* MODAL REZERWACJI */}
++      {selectedRoom && (
++        <div className="modal-overlay" onClick={() => setSelectedRoom(null)}>
++          <div className="modal-content" onClick={e => e.stopPropagation()}>
++            <button className="modal-close" onClick={() => setSelectedRoom(null)}>&times;</button>
++            <h2 style={{ fontSize: '1.75rem' }}>{selectedRoom.name}</h2>
++            
++            <div className="timeline-container">
++              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Dost─Öpno┼Ť─ç Sali</div>
++              <div className="timeline-bar">
++                <div className="time-slot slot-free"></div>
++                <div className="time-slot slot-booked"></div>
++                <div className="time-slot slot-free"></div>
++                <div className="time-slot slot-free"></div>
++              </div>
++            </div>
++
++            <form onSubmit={handleBooking}>
++              <div className="form-group">
++                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Imi─Ö i nazwisko prowadz─ůcego</label>
++                <input type="text" className="form-input" value={lecturerName} onChange={e => setLecturerName(e.target.value)} required />
++              </div>
++              <div className="form-group">
++                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Przedmiot</label>
++                <input type="text" className="form-input" value={subjectName} onChange={e => setSubjectName(e.target.value)} required />
++              </div>
++              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.85rem' }}>
++                Zatwierd┼║ rezerwacj─Ö
++              </button>
++            </form>
++          </div>
++        </div>
++      )}
++
++      {/* MODAL SUKCESU */}
++      {bookingSuccess && (
++        <div className="modal-overlay" style={{ zIndex: 60 }} onClick={() => setBookingSuccess(null)}>
++          <div className="modal-content success-box" onClick={e => e.stopPropagation()}>
++            <div className="success-icon">­čÄë</div>
++            <h2 style={{ fontSize: '1.8rem', color: '#16a34a', marginBottom: '1rem' }}>Zarezerwowano!</h2>
++            <div style={{ background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '8px', textAlign: 'left', marginBottom: '2rem' }}>
++              <p><strong>Sala:</strong> {bookingSuccess.roomName}</p>
++              <p><strong>Prowadz─ůcy:</strong> {bookingSuccess.lecturer}</p>
++              <p><strong>Zaj─Öcia:</strong> {bookingSuccess.subject}</p>
++            </div>
++            <button className="btn btn-primary" style={{ width: '100%', padding: '0.85rem' }} onClick={() => setBookingSuccess(null)}>Zamknij</button>
++          </div>
++        </div>
++      )}
++
++      {/* MODAL ADMINA - Wywo┼éywany tylko podw├│jnym klikni─Öciem */}
++      {showAdminPanel && (
++        <div className="modal-overlay" style={{ zIndex: 60 }} onClick={() => setShowAdminPanel(false)}>
++          <div className="modal-content" onClick={e => e.stopPropagation()}>
++            <button className="modal-close" onClick={() => setShowAdminPanel(false)}>&times;</button>
++            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Zarz─ůdzanie Zespo┼éem</h2>
++            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Zaszyfrowany modu┼é uprawnie┼ä.</p>
++            <div className="form-group" style={{ background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '12px' }}>
++              <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Nowy Administrator</h3>
++              <input type="email" placeholder="Email s┼éu┼╝bowy" className="form-input" style={{ marginBottom: '0.5rem' }} />
++              <button className="btn" style={{ background: '#10b981', color: 'white', border: 'none', width: '100%' }}>Nadaj uprawnienia</button>
+             </div>
++          </div>
+         </div>
+-    );
+-}
+\ No newline at end of file
++      )}
++    </div>
++  );
++};
+\ No newline at end of file
+diff --git a/classpace-frontend/src/index.css b/classpace-frontend/src/index.css
+index 5636325..661c058 100644
+--- a/classpace-frontend/src/index.css
++++ b/classpace-frontend/src/index.css
+@@ -1,641 +1,70 @@
+-:root {
+-    --c-brand: #25c2a0;
+-    --c-brand-hover: #20a88b;
+-
+-    --bg: #ffffff;
+-    --card-bg: #f5f6f8;
+-    --primary: var(--c-brand);
+-    --primary-hover: var(--c-brand-hover);
+-    --success: #28a745;
+-    --danger: #e31837;
+-    --warning: #ffc107;
+-
+-    --text-main: #1c1e21;
+-    --text-muted: #606770;
+-    --border: #dadde1;
+-    --input-bg: #ffffff;
+-    --btn-text: #ffffff;
+-    --radius: 6px;
++:root, [data-theme="merito"] {
++  --bg-app: #f4f5f7; --bg-card: #ffffff; --text-primary: #1a202c; --text-secondary: #4a5568;
++  --accent: #0056b3; --accent-hover: #004494; --border: #e2e8f0; --input-bg: #f8fafc;
+ }
+-
+ [data-theme="dark"] {
+-    --bg: #18191a;
+-    --card-bg: #242526;
+-
+-    --primary: var(--c-brand);
+-    --primary-hover: #1e9278;
+-    --success: #2ea043;
+-    --danger: #f85149;
+-    --warning: #d29922;
+-
+-    --text-main: #f3f4f6;
+-    --text-muted: #b0b8c4;
+-    --border: #3a3b3c;
+-    --input-bg: #18191a;
+-    --btn-text: #ffffff;
+-}
+-
+-* {
+-    box-sizing: border-box;
+-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+-}
+-
+-body {
+-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+-    background-color: var(--bg);
+-    color: var(--text-main);
+-    margin: 0;
+-    min-height: 100vh;
+-    line-height: 1.6;
+-}
+-
+-#login-page {
+-    display: flex;
+-    align-items: center;
+-    justify-content: center;
+-    min-height: 100vh;
+-    padding: 20px;
+-    width: 100%;
+-}
+-
+-#app-page {
+-    display: flex;
+-    justify-content: center;
+-    padding: 60px 20px;
+-    width: 100%;
+-}
+-
+-.top-actions {
+-    position: absolute;
+-    top: 20px;
+-    right: 20px;
+-    display: flex;
+-    gap: 15px;
+-    align-items: center;
+-}
+-
+-.theme-toggle {
+-    background: var(--card-bg);
+-    border: 1px solid var(--border);
+-    color: var(--text-main);
+-    padding: 8px 12px;
+-    border-radius: var(--radius);
+-    cursor: pointer;
+-    font-weight: 600;
+-    font-size: 13px;
+-}
+-
+-#theme-btn-login {
+-    position: absolute;
+-    top: 20px;
+-    right: 20px;
+-}
+-
+-.auth-card {
+-    background-color: var(--card-bg);
+-    width: 100%;
+-    max-width: 440px;
+-    border-radius: var(--radius);
+-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+-    padding: 50px 40px;
+-    position: relative;
+-    overflow: hidden;
+-    border: 1px solid var(--border);
+-}
+-
+-.auth-header {
+-    display: block !important;
+-    text-align: center;
+-    margin-bottom: 30px;
+-    border-bottom: none !important;
+-    padding-bottom: 0 !important;
+-}
+-
+-.auth-header h1 {
+-    color: var(--text-main);
+-    margin: 0 0 10px 0;
+-    font-size: 28px;
+-    font-weight: 700;
+-}
+-
+-.auth-header p {
+-    color: var(--text-muted);
+-    margin: 0;
+-    font-weight: 400;
+-    font-size: 14px;
+-}
+-
+-.auth-tabs {
+-    display: flex;
+-    border-bottom: 1px solid var(--border);
+-    margin-bottom: 30px;
+-}
+-
+-.tab-btn {
+-    flex: 1;
+-    padding: 12px;
+-    border: none;
+-    background: transparent;
+-    color: var(--text-muted);
+-    font-weight: 600;
+-    cursor: pointer;
+-    font-size: 14px;
+-    border-bottom: 2px solid transparent;
+-}
+-
+-.tab-btn.active {
+-    color: var(--primary);
+-    border-bottom: 2px solid var(--primary);
+-}
+-
+-.auth-form {
+-    display: none;
+-    animation: fadeIn 0.3s ease;
+-}
+-
+-.auth-form.active {
+-    display: block;
+-}
+-
+-@keyframes fadeIn {
+-    from {
+-        opacity: 0;
+-        transform: translateY(5px);
+-    }
+-
+-    to {
+-        opacity: 1;
+-        transform: translateY(0);
+-    }
+-}
+-
+-.toggle-password {
+-    position: absolute;
+-    right: 0;
+-    top: 28px;
+-    background: none;
+-    border: none;
+-    color: var(--text-muted);
+-    cursor: pointer;
+-    font-weight: 600;
+-    font-size: 11px;
+-    text-transform: uppercase;
+-}
+-
+-.password-strength {
+-    height: 3px;
+-    border-radius: 2px;
+-    background-color: var(--border);
+-    margin-top: 5px;
+-    overflow: hidden;
+-}
+-
+-.strength-bar {
+-    height: 100%;
+-    width: 0%;
+-    transition: width 0.3s ease, background-color 0.3s ease;
+-}
+-
+-.role-grid {
+-    display: grid;
+-    grid-template-columns: 1fr 1fr 1fr;
+-    gap: 10px;
+-    margin-bottom: 20px;
+-}
+-
+-.role-option {
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius);
+-    padding: 12px 10px;
+-    text-align: center;
+-    cursor: pointer;
+-    font-weight: 600;
+-    color: var(--text-muted);
+-    font-size: 13px;
+-    background-color: var(--input-bg);
+-}
+-
+-.role-option.selected {
+-    border-color: var(--primary);
+-    background-color: var(--primary);
+-    color: var(--btn-text);
+-}
+-
+-.captcha-container {
+-    display: flex;
+-    align-items: center;
+-    justify-content: space-between;
+-    padding: 15px 0;
+-    border-top: 1px solid var(--border);
+-    margin-top: 10px;
+-    margin-bottom: 20px;
+-}
+-
+-.captcha-equation {
+-    font-size: 16px;
+-    font-weight: 700;
+-    color: var(--text-main);
+-}
+-
+-.captcha-input {
+-    width: 60px !important;
+-    text-align: center;
+-    font-weight: bold;
+-    border: none !important;
+-    border-bottom: 2px solid var(--border) !important;
+-    border-radius: 0 !important;
+-    padding: 5px !important;
+-    background: transparent;
+-    color: var(--text-main);
+-}
+-
+-.captcha-input:focus {
+-    border-bottom-color: var(--primary) !important;
+-    outline: none;
+-}
+-
+-.captcha-refresh {
+-    background: none;
+-    border: none;
+-    cursor: pointer;
+-    font-size: 12px;
+-    font-weight: 600;
+-    color: var(--text-muted);
+-    text-transform: uppercase;
+-}
+-
+-.btn-submit {
+-    background-color: var(--primary);
+-    color: var(--btn-text);
+-    width: 100%;
+-    padding: 14px;
+-    border: none;
+-    border-radius: var(--radius);
+-    font-size: 15px;
+-    font-weight: 700;
+-    cursor: pointer;
+-}
+-
+-.btn-submit:active {
+-    transform: scale(0.99);
+-}
+-
+-.container {
+-    width: 100%;
+-    max-width: 1000px;
+-    background-color: var(--card-bg);
+-    border-radius: var(--radius);
+-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+-    padding: 50px;
+-    position: relative;
+-    border: 1px solid var(--border);
+-}
+-
+-.header {
+-    display: flex;
+-    justify-content: space-between;
+-    align-items: center;
+-    margin-bottom: 40px;
+-}
+-
+-.header h1 {
+-    color: var(--text-main);
+-    margin: 0;
+-    font-size: 26px;
+-    font-weight: 700;
+-}
+-
+-.subtitle {
+-    color: var(--text-muted);
+-    font-weight: 400;
+-    font-size: 14px;
+-}
+-
+-.role-selector {
+-    display: flex;
+-    border-bottom: 1px solid var(--border);
+-    margin-bottom: 40px;
+-    gap: 20px;
+-}
+-
+-.btn-role {
+-    padding: 10px 0;
+-    border: none;
+-    border-bottom: 2px solid transparent;
+-    cursor: pointer;
+-    font-size: 14px;
+-    font-weight: 600;
+-    background: transparent;
+-    color: var(--text-muted);
+-    border-radius: 0;
+-}
+-
+-.btn-role.active {
+-    color: var(--primary);
+-    border-bottom-color: var(--primary);
+-}
+-
+-.form-panel {
+-    margin-bottom: 40px;
+-}
+-
+-.form-row {
+-    display: flex;
+-    gap: 30px;
+-    margin-bottom: 25px;
+-    flex-wrap: wrap;
+-    align-items: flex-end;
+-}
+-
+-.input-group {
+-    flex: 1;
+-    min-width: 180px;
+-    display: flex;
+-    flex-direction: column;
+-    gap: 8px;
+-    position: relative;
+-}
+-
+-label {
+-    font-weight: 600;
+-    font-size: 11px;
+-    color: var(--text-muted);
+-    text-transform: uppercase;
+-    letter-spacing: 0.5px;
+-}
+-
+-input[type="text"],
+-input[type="email"],
+-input[type="password"],
+-input[type="date"],
+-input[type="time"],
+-input[type="number"],
+-select {
+-    width: 100%;
+-    padding: 10px 0;
+-    border: none;
+-    border-bottom: 1px solid var(--border);
+-    border-radius: 0;
+-    font-size: 15px;
+-    font-family: inherit;
+-    background-color: transparent;
+-    color: var(--text-main);
+-    outline: none;
+-}
+-
+-input:focus,
+-select:focus {
+-    border-bottom-color: var(--primary);
+-}
+-
+-input:disabled {
+-    color: var(--text-muted);
+-    border-bottom-style: dashed;
+-}
+-
+-.checkbox-group {
+-    display: flex;
+-    align-items: center;
+-    gap: 10px;
+-    margin-bottom: 20px;
+-    font-size: 14px;
+-    color: var(--text-main);
+-}
+-
+-.section-title {
+-    font-size: 18px;
+-    font-weight: 600;
+-    color: var(--text-main);
+-    margin-bottom: 20px;
+-}
+-
+-.view-section {
+-    display: none;
+-}
+-
+-.view-section.active {
+-    display: block;
+-    animation: fadeIn 0.3s ease;
+-}
+-
+-.interactive-map-container {
+-    margin-bottom: 20px;
+-}
+-
+-.map-legend {
+-    display: flex;
+-    gap: 20px;
+-    margin-bottom: 25px;
+-    font-size: 11px;
+-    font-weight: 600;
+-    color: var(--text-muted);
+-    text-transform: uppercase;
+-    letter-spacing: 0.5px;
+-}
+-
+-.legend-item {
+-    display: flex;
+-    align-items: center;
+-    gap: 6px;
+-}
+-
+-.legend-box {
+-    width: 10px;
+-    height: 10px;
+-    border-radius: 2px;
+-}
+-
+-.map-floor {
+-    margin-bottom: 30px;
+-}
+-
+-.map-floor-title {
+-    font-size: 11px;
+-    font-weight: 700;
+-    color: var(--text-muted);
+-    margin-bottom: 15px;
+-    text-transform: uppercase;
+-    letter-spacing: 1px;
+-    border-bottom: 1px solid var(--border);
+-    padding-bottom: 5px;
+-}
+-
+-.floor-grid {
+-    display: grid;
+-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+-    gap: 12px;
+-}
+-
+-.map-room {
+-    padding: 16px 10px;
+-    border-radius: var(--radius);
+-    text-align: center;
+-    font-weight: 600;
+-    font-size: 15px;
+-    cursor: pointer;
+-    display: flex;
+-    flex-direction: column;
+-    align-items: center;
+-    justify-content: center;
+-}
+-
+-.map-room small {
+-    font-size: 10px;
+-    font-weight: 500;
+-    margin-top: 4px;
+-    color: inherit;
+-    opacity: 0.6;
+-}
+-
+-.status-free {
+-    background-color: var(--input-bg);
+-    color: var(--text-main);
+-    border: 1px solid var(--border);
+-}
+-
+-.status-free:hover {
+-    border-color: var(--primary);
+-    color: var(--primary);
+-    transform: translateY(-2px);
+-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+-}
+-
+-.status-taken {
+-    background-color: transparent;
+-    border: 1px dashed var(--border);
+-    color: var(--text-muted);
+-    opacity: 0.4;
+-    cursor: not-allowed;
+-}
+-
+-.status-issue {
+-    background-color: transparent;
+-    border: 1px solid var(--danger);
+-    color: var(--danger);
+-}
+-
+-.status-selected {
+-    background-color: var(--primary) !important;
+-    color: var(--btn-text) !important;
+-    border-color: var(--primary) !important;
+-    font-weight: 700;
+-}
+-
+-.btn {
+-    padding: 10px 20px;
+-    border: none;
+-    border-radius: var(--radius);
+-    font-size: 13px;
+-    font-weight: 600;
+-    cursor: pointer;
+-    color: var(--btn-text);
+-    display: inline-flex;
+-    align-items: center;
+-    justify-content: center;
+-    gap: 6px;
+-}
+-
+-.btn-reserve {
+-    background-color: var(--success);
+-}
+-
+-.btn-reserve:hover {
+-    filter: brightness(1.1);
+-}
+-
+-.btn-cancel {
+-    background-color: transparent;
+-    color: var(--danger);
+-    border: 1px solid var(--danger);
+-}
+-
+-.btn-cancel:hover {
+-    background-color: var(--danger);
+-    color: white;
+-}
+-
+-.btn-return {
+-    background-color: transparent;
+-    color: var(--text-main);
+-    border: 1px solid var(--border);
+-}
+-
+-.btn-return:hover {
+-    background-color: var(--border);
+-}
+-
+-.btn-search {
+-    background-color: var(--primary);
+-    color: var(--btn-text);
+-    font-weight: 600;
+-    border-radius: 30px;
+-    padding: 12px 30px;
+-}
+-
+-.btn-search:hover {
+-    background-color: var(--primary-hover);
+-}
+-
+-.room-card {
+-    padding: 16px 20px;
+-    border: 1px solid var(--border);
+-    border-radius: var(--radius);
+-    display: flex;
+-    justify-content: space-between;
+-    align-items: center;
+-    margin-bottom: 12px;
+-    background: var(--input-bg);
+-}
+-
+-.room-info h3 {
+-    margin: 0 0 4px 0;
+-    color: var(--text-main);
+-    font-weight: 600;
+-    font-size: 16px;
+-}
+-
+-.room-info p {
+-    margin: 0;
+-    font-size: 13px;
+-    color: var(--text-muted);
+-}
+-
+-.badge {
+-    padding: 5px 12px;
+-    border-radius: 4px;
+-    font-size: 11px;
+-    font-weight: 600;
+-    text-transform: uppercase;
+-    background: var(--primary);
+-    color: var(--btn-text);
+-}
+-
+-.badge-taken {
+-    background: transparent;
+-    border: 1px solid var(--danger);
+-    color: var(--danger);
+-}
+-
+-.alert {
+-    padding: 14px 20px;
+-    border-radius: var(--radius);
+-    margin-bottom: 25px;
+-    display: none;
+-    font-weight: 500;
+-    font-size: 14px;
+-}
+-
+-.alert-success {
+-    background-color: var(--success);
+-    color: white;
+-}
+-
+-.alert-danger {
+-    background-color: var(--danger);
+-    color: white;
+-}
+-
+-.alert-warning {
+-    background-color: var(--warning);
+-    color: #000000;
+-}
++  --bg-app: #0f172a; --bg-card: #1e293b; --text-primary: #f8fafc; --text-secondary: #94a3b8;
++  --accent: #3b82f6; --accent-hover: #60a5fa; --border: #334155; --input-bg: #0f172a;
++}
++
++* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
++body { background-color: var(--bg-app); color: var(--text-primary); transition: all 0.3s ease; }
++button { cursor: pointer; border: none; outline: none; font-family: inherit; }
++input { font-family: inherit; }
++
++.container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
++.header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
++.header-actions { display: flex; gap: 0.75rem; align-items: center; }
++
++.form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem; }
++.form-input { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text-primary); font-size: 1rem; transition: border-color 0.2s; }
++.form-input:focus { border-color: var(--accent); outline: none; }
++
++.btn { padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 500; transition: all 0.2s; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
++.btn:hover { border-color: var(--accent); transform: translateY(-1px); }
++.btn-primary { background: var(--accent); color: white; border: none; }
++.btn-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(0, 86, 179, 0.3); }
++.btn-icon { padding: 0.5rem; border-radius: 50%; font-size: 1.25rem; background: transparent; border: none; }
++.btn-icon:hover { background: var(--border); }
++
++.filter-bar { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; align-items: center; background: var(--bg-card); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid var(--border); }
++.pill { padding: 0.5rem 1.25rem; border-radius: 50px; background: var(--bg-app); border: 1px solid var(--border); color: var(--text-secondary); transition: all 0.2s; }
++.pill.active { background: var(--accent); color: white; border-color: var(--accent); }
++.divider { width: 1px; height: 30px; background: var(--border); margin: 0 0.5rem; }
++
++/* AI Assistant Styles */
++.ai-bar { margin-bottom: 2rem; background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); position: relative; overflow: hidden; }
++.ai-bar::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899); background-size: 200% 200%; animation: gradientShift 3s ease infinite; }
++.ai-input-wrapper { display: flex; gap: 1rem; }
++.ai-input { flex: 1; padding: 1rem 1.5rem; border-radius: 50px; border: 2px solid var(--border); background: var(--input-bg); color: var(--text-primary); font-size: 1.1rem; transition: all 0.3s; }
++.ai-input:focus { border-color: #a855f7; outline: none; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
++.btn-ai { background: linear-gradient(135deg, #a855f7, #6366f1); color: white; border: none; border-radius: 50px; padding: 0 2rem; font-weight: bold; font-size: 1.1rem; transition: transform 0.2s; }
++.btn-ai:hover { transform: scale(1.05); }
++.ai-status { margin-top: 1rem; font-size: 0.9rem; color: #a855f7; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; }
++.spinner { width: 16px; height: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-top-color: #a855f7; border-radius: 50%; animation: spin 1s linear infinite; }
++
++.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
++.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
++.card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1); border-color: var(--accent); }
++.tag { font-size: 0.75rem; font-weight: 600; padding: 0.35rem 0.6rem; border-radius: 6px; background: #dbeafe; color: #1d4ed8; display: inline-block; margin-top: 1rem; }
++
++.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 50; backdrop-filter: blur(4px); animation: fadeIn 0.2s; padding: 1rem; }
++.modal-content { background: var(--bg-card); padding: 2rem; border-radius: 16px; width: 100%; max-width: 500px; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-height: 90vh; overflow-y: auto; }
++.modal-close { position: absolute; top: 1.25rem; right: 1.25rem; background: var(--bg-app); border-radius: 50%; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; border: 1px solid var(--border); font-size: 1.25rem; color: var(--text-secondary); cursor: pointer; }
++.modal-close:hover { background: #ef4444; color: white; border-color: #ef4444; }
++
++.success-box { text-align: center; padding: 3rem 2rem; }
++.success-icon { font-size: 4rem; margin-bottom: 1rem; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
++
++/* Timeline */
++.timeline-container { margin: 1.5rem 0; padding: 1rem; background: var(--bg-app); border-radius: 8px; border: 1px solid var(--border); }
++.timeline-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; width: 100%; margin-top: 0.5rem; }
++.time-slot { flex: 1; border-right: 1px solid var(--bg-app); }
++.slot-free { background: #22c55e; }
++.slot-booked { background: #ef4444; }
++
++@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
++@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
++@keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
++@keyframes spin { to { transform: rotate(360deg); } }
++@keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+\ No newline at end of file
