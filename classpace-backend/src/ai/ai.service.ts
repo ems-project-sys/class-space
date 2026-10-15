@@ -28,10 +28,7 @@ export class AiService {
       lowerPrompt.includes('lab')
     ) {
       roomType = 'Lab. Komputerowe';
-    } else if (
-      lowerPrompt.includes('ćwicz') ||
-      lowerPrompt.includes('cwicz')
-    ) {
+    } else if (lowerPrompt.includes('ćwicz') || lowerPrompt.includes('cwicz')) {
       roomType = 'Ćwiczeniowa';
     } else if (lowerPrompt.includes('aul')) {
       roomType = 'Aula';
@@ -41,8 +38,7 @@ export class AiService {
       success: true,
       filters: {
         needsProjector:
-          lowerPrompt.includes('rzutnik') ||
-          lowerPrompt.includes('projektor'),
+          lowerPrompt.includes('rzutnik') || lowerPrompt.includes('projektor'),
         type: roomType,
         capacity: requiredCapacity
           ? Number.parseInt(requiredCapacity[0], 10)

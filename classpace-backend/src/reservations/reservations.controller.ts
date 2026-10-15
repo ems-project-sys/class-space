@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Post,
   Req,
@@ -22,6 +23,11 @@ interface AuthenticatedRequest {
 @UseGuards(JwtAuthGuard)
 export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
+
+  @Get('mine')
+  findMine(@Req() request: AuthenticatedRequest) {
+    return this.reservationsService.findMine(request.user.sub);
+  }
 
   @Post()
   create(

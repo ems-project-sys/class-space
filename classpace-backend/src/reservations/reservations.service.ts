@@ -25,6 +25,26 @@ export interface AuthenticatedUser {
 export class ReservationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findMine(userId: string) {
+    return this.prisma.reservation.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            type: true,
+            capacity: true,
+            hasProjector: true,
+          },
+        },
+      },
+      orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+    });
+  }
+
   async create(input: CreateReservationInput, user: AuthenticatedUser) {
     this.validateTimeRange(input.startTime, input.endTime);
 
