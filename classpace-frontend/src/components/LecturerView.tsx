@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
+import InlineNotice from './InlineNotice';
 
 const getErrorMessage = (error: unknown, fallback: string) => (
     error instanceof Error ? error.message : fallback
@@ -50,6 +51,7 @@ export default function LecturerView() {
     const [assistantPrompt, setAssistantPrompt] = useState('');
     const [assistantMessage, setAssistantMessage] = useState<string | null>(null);
     const [isAssistantLoading, setIsAssistantLoading] = useState(false);
+    const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     
     const [selectedMapRoomId, setSelectedMapRoomId] = useState<string | null>(null);
 
@@ -91,7 +93,7 @@ export default function LecturerView() {
 
     const handleBookRoom = async (roomId: string) => {
         if (!subject.trim()) {
-            alert('Wypełnij Temat zajęć przed rezerwacją.');
+            setNotice({ message: 'Wypełnij temat zajęć przed rezerwacją.', type: 'error' });
             return;
         }
         const endTime = calculateEndTime(time, duration);
@@ -103,9 +105,9 @@ export default function LecturerView() {
             
             setSelectedMapRoomId(null);
             setSubject(''); 
-            alert(`Pomyślnie zarezerwowano salę ${roomId}`);
+            setNotice({ message: `Pomyślnie zarezerwowano salę ${roomId}.`, type: 'success' });
         } catch (error: unknown) {
-            alert(getErrorMessage(error, "Błąd rezerwacji."));
+            setNotice({ message: getErrorMessage(error, 'Błąd rezerwacji.'), type: 'error' });
         }
     };
 
@@ -114,9 +116,9 @@ export default function LecturerView() {
         if (issueDescription && issueDescription.trim() !== '') {
             try {
                 await ApiService.reportIssue(roomId, issueDescription.trim());
-                alert("Zgłoszono usterkę.");
+                setNotice({ message: 'Zgłoszono usterkę.', type: 'success' });
             } catch {
-                alert("Błąd zgłaszania usterki.");
+                setNotice({ message: 'Błąd zgłaszania usterki.', type: 'error' });
             }
         }
     };
@@ -125,9 +127,9 @@ export default function LecturerView() {
         try {
             await ApiService.cancelRoom(reservationId);
             await loadMyReservations();
-            alert('Rezerwacja została anulowana.');
+            setNotice({ message: 'Rezerwacja została anulowana.', type: 'success' });
         } catch (error: unknown) {
-            alert(getErrorMessage(error, 'Nie udało się anulować rezerwacji.'));
+            setNotice({ message: getErrorMessage(error, 'Nie udało się anulować rezerwacji.'), type: 'error' });
         }
     };
 
@@ -211,6 +213,7 @@ export default function LecturerView() {
 
     return (
         <div className="view-section active">
+            <InlineNotice message={notice?.message || null} type={notice?.type || 'info'} />
             <div className="form-panel">
                 <div className="form-row">
                     <div className="input-group">

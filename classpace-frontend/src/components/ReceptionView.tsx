@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ApiService } from '../apiService.js';
+import InlineNotice from './InlineNotice';
 
 const getErrorMessage = (error: unknown, fallback: string) => (
     error instanceof Error ? error.message : fallback
@@ -23,6 +24,7 @@ interface Room {
 export default function ReceptionView() {
     const [rooms, setRooms] = useState<Room[]>([]);
     const [currentTime, setCurrentTime] = useState<string>('');
+    const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     useEffect(() => {
         const unsubscribe = ApiService.subscribeToRooms((fetchedRooms: Room[]) => {
@@ -46,9 +48,9 @@ export default function ReceptionView() {
                 const room = rooms.find((item) => item.id === roomId);
                 if (!room?.issueId) return;
                 await ApiService.resolveIssue(room.issueId, resolutionDescription.trim());
-                alert(`Usterka w sali ${roomId} została oznaczona jako naprawiona.`);
+                setNotice({ message: `Usterka w sali ${roomId} została oznaczona jako naprawiona.`, type: 'success' });
             } catch (error: unknown) {
-                alert(getErrorMessage(error, "Błąd podczas rozwiązywania usterki."));
+                setNotice({ message: getErrorMessage(error, 'Błąd podczas rozwiązywania usterki.'), type: 'error' });
             }
         }
     };
@@ -58,9 +60,9 @@ export default function ReceptionView() {
             const room = rooms.find((item) => item.id === roomId);
             if (!room?.reservationId) return;
             await ApiService.cancelRoom(room.reservationId);
-            alert(`Zakończono rezerwację dla sali ${roomId}.`);
+            setNotice({ message: `Zakończono rezerwację dla sali ${roomId}.`, type: 'success' });
         } catch {
-            alert("Błąd podczas kończenia rezerwacji.");
+            setNotice({ message: 'Błąd podczas kończenia rezerwacji.', type: 'error' });
         }
     };
 
@@ -69,6 +71,7 @@ export default function ReceptionView() {
 
     return (
         <div className="view-section active">
+            <InlineNotice message={notice?.message || null} type={notice?.type || 'info'} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid var(--border)', paddingBottom: '20px' }}>
                 <div>
                     <h2 style={{ margin: '0 0 5px 0', color: 'var(--text-main)' }}>Panel Zarządzania</h2>
