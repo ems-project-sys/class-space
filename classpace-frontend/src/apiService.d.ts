@@ -23,6 +23,21 @@ interface ApiRoomSummary extends ApiRoom {
 	time: string;
 }
 
+interface ApiReservation {
+	id: string;
+	date: string;
+	startTime: string;
+	endTime: string;
+	subject: string;
+	status: string;
+	room: {
+		id: string;
+		type: string;
+		capacity: number;
+		hasProjector: boolean;
+	};
+}
+
 type RoomUpdateCallback = (rooms: ApiRoomSummary[]) => void;
 
 interface AssistantFilters {
@@ -37,6 +52,7 @@ export declare const ApiService: {
 	fetchAvailableRooms: (date: string, startTime: string, endTime: string) => Promise<ApiRoom[]>;
 	parseRoomPrompt: (prompt: string) => Promise<{ success: true; filters: AssistantFilters; message: string }>;
 	bookRoom: (roomId: string, date: string, subject: string, startTime: string, endTime: string) => Promise<unknown>;
+	fetchMyReservations: () => Promise<ApiReservation[]>;
 	cancelRoom: (reservationId: string) => Promise<unknown>;
 	reportIssue: (roomId: string, description: string) => Promise<unknown>;
 	resolveIssue: (issueId: string, resolution: string) => Promise<unknown>;

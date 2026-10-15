@@ -94,6 +94,8 @@ export const ApiService = {
         body: JSON.stringify({ roomId, date, subject, startTime, endTime }),
     }),
 
+    fetchMyReservations: () => request('/reservations/mine'),
+
     cancelRoom: (reservationId) => request(`/reservations/${reservationId}`, {
         method: 'DELETE',
     }),

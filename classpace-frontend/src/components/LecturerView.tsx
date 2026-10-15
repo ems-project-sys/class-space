@@ -14,6 +14,20 @@ interface Room {
     issueDesc: string;
 }
 
+interface Reservation {
+    id: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    subject: string;
+    room: {
+        id: string;
+        type: string;
+        capacity: number;
+        hasProjector: boolean;
+    };
+}
+
 const campusLayout = {
     'Piętro 3': ['301', '302'],
     'Piętro 2': ['205'],
@@ -23,6 +37,7 @@ const campusLayout = {
 
 export default function LecturerView() {
     const [rooms, setRooms] = useState<Room[]>([]);
+    const [myReservations, setMyReservations] = useState<Reservation[]>([]);
     const userName = localStorage.getItem('classSpaceUserName') || 'Nieznany';
 
     const [subject, setSubject] = useState('');
@@ -46,12 +61,29 @@ export default function LecturerView() {
         return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
     };
 
+    const loadMyReservations = async () => {
+        try {
+            setMyReservations(await ApiService.fetchMyReservations());
+        } catch {
+            setMyReservations([]);
+        }
+    };
+
+    useEffect(() => {
+        const fetchReservations = async () => {
+            await loadMyReservations();
+        };
+
+        void fetchReservations();
+    }, []);
+
     useEffect(() => {
         const fetchAvailableRooms = async () => {
             if (!date || !time || !duration) return;
             const endTime = calculateEndTime(time, duration);
             const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
             setRooms(availableRooms);
+            await loadMyReservations();
             setSelectedMapRoomId(null); 
         };
         fetchAvailableRooms();
@@ -86,6 +118,16 @@ export default function LecturerView() {
             } catch {
                 alert("Błąd zgłaszania usterki.");
             }
+        }
+    };
+
+    const handleCancelReservation = async (reservationId: string) => {
+        try {
+            await ApiService.cancelRoom(reservationId);
+            await loadMyReservations();
+            alert('Rezerwacja została anulowana.');
+        } catch (error: unknown) {
+            alert(getErrorMessage(error, 'Nie udało się anulować rezerwacji.'));
         }
     };
 
@@ -237,6 +279,30 @@ export default function LecturerView() {
                     </button>
                 </form>
                 {assistantMessage && <p className="assistant-message">{assistantMessage}</p>}
+            </div>
+
+            <div className="section-title">Moje rezerwacje</div>
+            <div className="reservation-list">
+                {myReservations.length === 0 ? (
+                    <p className="reservation-empty">Nie masz jeszcze aktywnych rezerwacji.</p>
+                ) : (
+                    myReservations.map((reservation) => (
+                        <div className="reservation-card" key={reservation.id}>
+                            <div>
+                                <h3>Sala {reservation.room.id}</h3>
+                                <p>{reservation.room.type} | {reservation.room.capacity} osób</p>
+                                <p><strong>{reservation.date}</strong> | {reservation.startTime} - {reservation.endTime}</p>
+                                <p>Temat: {reservation.subject}</p>
+                            </div>
+                            <button
+                                className="btn btn-return"
+                                onClick={() => void handleCancelReservation(reservation.id)}
+                            >
+                                Anuluj
+                            </button>
+                        </div>
+                    ))
+                )}
             </div>
 
             <div className="section-title">Mapa kampusu</div>

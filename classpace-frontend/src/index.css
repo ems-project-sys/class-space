@@ -694,6 +694,47 @@ input:disabled {
     font-size: 13px;
 }
 
+.reservation-list {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 40px;
+}
+
+.reservation-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--success);
+    border-radius: var(--radius);
+    background: var(--input-bg);
+}
+
+.reservation-card h3 {
+    margin: 0 0 4px;
+    color: var(--text-main);
+}
+
+.reservation-card p {
+    margin: 3px 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.reservation-empty {
+    margin: 0 0 40px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+    .reservation-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
 @media (max-width: 600px) {
     .assistant-form {
         flex-direction: column;
