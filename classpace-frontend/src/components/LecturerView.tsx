@@ -99,8 +99,11 @@ export default function LecturerView() {
         const endTime = calculateEndTime(time, duration);
         try {
             await ApiService.bookRoom(roomId, date, subject, time, endTime);
-            
-            const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
+
+            const [availableRooms] = await Promise.all([
+                ApiService.fetchAvailableRooms(date, time, endTime),
+                loadMyReservations(),
+            ]);
             setRooms(availableRooms);
             
             setSelectedMapRoomId(null);
@@ -126,7 +129,11 @@ export default function LecturerView() {
     const handleCancelReservation = async (reservationId: string) => {
         try {
             await ApiService.cancelRoom(reservationId);
-            await loadMyReservations();
+            const [availableRooms] = await Promise.all([
+                ApiService.fetchAvailableRooms(date, time, calculateEndTime(time, duration)),
+                loadMyReservations(),
+            ]);
+            setRooms(availableRooms);
             setNotice({ message: 'Rezerwacja została anulowana.', type: 'success' });
         } catch (error: unknown) {
             setNotice({ message: getErrorMessage(error, 'Nie udało się anulować rezerwacji.'), type: 'error' });
