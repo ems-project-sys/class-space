@@ -32,30 +32,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     return (
         <div id="app-page">
             <div className="container">
-                <div className="top-actions">
-                    <button className="theme-toggle" onClick={toggleTheme}>Alternatywny Motyw</button>
-                    <button className="btn btn-return" onClick={handleLogout} style={{ padding: '6px 12px', fontSize: '13px' }}>
-                        Wyloguj
-                    </button>
-                </div>
-
-                <div className="header">
-                    <div>
-                        <h1>ClassSpace</h1>
-                        <div className="subtitle">System Rezerwacji Zasobów</div>
+                {role !== 'wykladowca' && (
+                    <div className="top-actions">
+                        <button className="theme-toggle" onClick={toggleTheme}>Alternatywny Motyw</button>
+                        <button className="btn btn-return" onClick={handleLogout} style={{ padding: '6px 12px', fontSize: '13px' }}>
+                            Wyloguj
+                        </button>
                     </div>
-                </div>
+                )}
 
-                {/* --- ROLE NAVIGATION --- */}
-                <div className="role-selector">
-                    <div className="current-role-badge">
-                        Active Profile: {role.toUpperCase()}
-                    </div>
-                </div>  
-
-                
                 {/* --- MAIN VIEW RENDERER --- */}
-                {role === 'wykladowca' && <LecturerView />}
+                {role === 'wykladowca' && <LecturerView onLogout={handleLogout} />}
                 {role === 'portiernia' && <ReceptionView />}
                 {role === 'admin' && (
                     <div style={{ padding: '20px', border: '1px solid var(--danger)' }}>

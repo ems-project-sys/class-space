@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiService } from '../apiService.js';
 import InlineNotice from './InlineNotice';
 
-const getErrorMessage = (error: unknown, fallback: string) => (
-    error instanceof Error ? error.message : fallback
-);
+const ROOM_TYPES = ['Wykładowa', 'Aula', 'Ćwiczeniowa', 'Lab. Komputerowe'];
 
 interface Room {
     id: string;
@@ -21,348 +19,257 @@ interface Reservation {
     startTime: string;
     endTime: string;
     subject: string;
-    room: {
-        id: string;
-        type: string;
-        capacity: number;
-        hasProjector: boolean;
-    };
+    room: { id: string; type: string; capacity: number; hasProjector: boolean };
 }
 
-const campusLayout = {
-    'Piętro 3': ['301', '302'],
-    'Piętro 2': ['205'],
-    'Piętro 1': ['101', '102', 'LAB_1'],
-    'Parter': ['AULA_A', 'SPORT']
+const getErrorMessage = (error: unknown, fallback: string) => (
+    error instanceof Error ? error.message : fallback
+);
+
+const calculateEndTime = (start: string, duration: string) => {
+    const [hours, minutes] = start.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + Number(duration);
+    return `${String(Math.floor(totalMinutes / 60) % 24).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
 };
 
-export default function LecturerView() {
-    const [rooms, setRooms] = useState<Room[]>([]);
-    const [myReservations, setMyReservations] = useState<Reservation[]>([]);
+export default function LecturerView({ onLogout }: { onLogout: () => void }) {
     const userName = localStorage.getItem('classSpaceUserName') || 'Nieznany';
-
-    const [subject, setSubject] = useState('');
+    const [theme, setTheme] = useState<'light' | 'dark'>(
+        (localStorage.getItem('classSpaceTheme') as 'light' | 'dark') || 'light',
+    );
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [reservations, setReservations] = useState<Reservation[]>([]);
+    const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [needsProjector, setNeedsProjector] = useState(false);
+    const [requiredCapacity, setRequiredCapacity] = useState('');
     const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA'));
-    const [time, setTime] = useState(() => `${String((new Date().getHours() + 1) % 24).padStart(2, '0')}:00`);
+    const [time, setTime] = useState('08:00');
     const [duration, setDuration] = useState('90');
-    const [minCapacity, setMinCapacity] = useState(10);
-    const [reqProjector, setReqProjector] = useState(false);
-    const [roomType, setRoomType] = useState<string | null>(null);
     const [assistantPrompt, setAssistantPrompt] = useState('');
-    const [assistantMessage, setAssistantMessage] = useState<string | null>(null);
+    const [assistantFeedback, setAssistantFeedback] = useState<string | null>(null);
     const [isAssistantLoading, setIsAssistantLoading] = useState(false);
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+    const [subject, setSubject] = useState('');
     const [notice, setNotice] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-    
-    const [selectedMapRoomId, setSelectedMapRoomId] = useState<string | null>(null);
 
-    const calculateEndTime = (start: string, durationMin: string) => {
-        if (!start) return '';
-        let [hours, minutes] = start.split(':').map(Number);
-        minutes += parseInt(durationMin);
-        hours += Math.floor(minutes / 60);
-        return `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
-    };
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('classSpaceTheme', theme);
+    }, [theme]);
 
-    const loadMyReservations = async () => {
+    const loadData = async () => {
+        if (!date || !time || !duration) return;
         try {
-            setMyReservations(await ApiService.fetchMyReservations());
-        } catch {
-            setMyReservations([]);
-        }
-    };
-
-    useEffect(() => {
-        const fetchReservations = async () => {
-            await loadMyReservations();
-        };
-
-        void fetchReservations();
-    }, []);
-
-    useEffect(() => {
-        const fetchAvailableRooms = async () => {
-            if (!date || !time || !duration) return;
             const endTime = calculateEndTime(time, duration);
-            const availableRooms = await ApiService.fetchAvailableRooms(date, time, endTime);
-            setRooms(availableRooms);
-            await loadMyReservations();
-            setSelectedMapRoomId(null); 
-        };
-        fetchAvailableRooms();
-    }, [date, time, duration, minCapacity, reqProjector]);
-
-    const handleBookRoom = async (roomId: string) => {
-        if (!subject.trim()) {
-            setNotice({ message: 'Wypełnij temat zajęć przed rezerwacją.', type: 'error' });
-            return;
-        }
-        const endTime = calculateEndTime(time, duration);
-        try {
-            await ApiService.bookRoom(roomId, date, subject, time, endTime);
-
-            const [availableRooms] = await Promise.all([
+            const [availableRooms, myReservations] = await Promise.all([
                 ApiService.fetchAvailableRooms(date, time, endTime),
-                loadMyReservations(),
+                ApiService.fetchMyReservations(),
             ]);
             setRooms(availableRooms);
-            
-            setSelectedMapRoomId(null);
-            setSubject(''); 
-            setNotice({ message: `Pomyślnie zarezerwowano salę ${roomId}.`, type: 'success' });
+            setReservations(myReservations);
         } catch (error: unknown) {
-            setNotice({ message: getErrorMessage(error, 'Błąd rezerwacji.'), type: 'error' });
+            setNotice({ message: getErrorMessage(error, 'Nie udało się pobrać danych.'), type: 'error' });
         }
     };
 
-    const handleReportIssue = async (roomId: string) => {
-        const issueDescription = prompt(`Zgłaszasz usterkę w Sali ${roomId}.\nKrótko opisz problem:`);
-        if (issueDescription && issueDescription.trim() !== '') {
+    useEffect(() => {
+        let active = true;
+        const fetchData = async () => {
+            if (!date || !time || !duration) return;
             try {
-                await ApiService.reportIssue(roomId, issueDescription.trim());
-                setNotice({ message: 'Zgłoszono usterkę.', type: 'success' });
-            } catch {
-                setNotice({ message: 'Błąd zgłaszania usterki.', type: 'error' });
+                const endTime = calculateEndTime(time, duration);
+                const [availableRooms, myReservations] = await Promise.all([
+                    ApiService.fetchAvailableRooms(date, time, endTime),
+                    ApiService.fetchMyReservations(),
+                ]);
+                if (active) {
+                    setRooms(availableRooms);
+                    setReservations(myReservations);
+                }
+            } catch (error: unknown) {
+                if (active) {
+                    setNotice({ message: getErrorMessage(error, 'Nie udało się pobrać danych.'), type: 'error' });
+                }
             }
-        }
-    };
-
-    const handleCancelReservation = async (reservationId: string) => {
-        try {
-            await ApiService.cancelRoom(reservationId);
-            const [availableRooms] = await Promise.all([
-                ApiService.fetchAvailableRooms(date, time, calculateEndTime(time, duration)),
-                loadMyReservations(),
-            ]);
-            setRooms(availableRooms);
-            setNotice({ message: 'Rezerwacja została anulowana.', type: 'success' });
-        } catch (error: unknown) {
-            setNotice({ message: getErrorMessage(error, 'Nie udało się anulować rezerwacji.'), type: 'error' });
-        }
-    };
+        };
+        void fetchData();
+        return () => {
+            active = false;
+        };
+    }, [date, time, duration]);
 
     const handleAssistantQuery = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!assistantPrompt.trim()) return;
 
         setIsAssistantLoading(true);
-        setAssistantMessage(null);
-
+        setAssistantFeedback(null);
         try {
-            const response = await ApiService.parseRoomPrompt(assistantPrompt);
-            const { filters } = response;
-
-            setReqProjector(filters.needsProjector);
-            setRoomType(filters.type);
-            if (filters.capacity !== null) {
-                setMinCapacity(filters.capacity);
-            }
-
-            const appliedFilters = [
-                filters.needsProjector ? 'rzutnik' : null,
-                filters.type,
-                filters.capacity ? `min. ${filters.capacity} osób` : null,
+            const { filters } = await ApiService.parseRoomPrompt(assistantPrompt);
+            setNeedsProjector(filters.needsProjector);
+            setSelectedType(filters.type);
+            setRequiredCapacity(filters.capacity ? String(filters.capacity) : '');
+            const feedback = [
+                filters.needsProjector ? 'Rzutnik: wymagany' : null,
+                filters.type ? `Typ: ${filters.type}` : null,
+                filters.capacity ? `Miejsca: min. ${filters.capacity}` : null,
             ].filter(Boolean);
-            setAssistantMessage(
-                appliedFilters.length > 0
-                    ? `Zastosowano: ${appliedFilters.join(', ')}`
-                    : 'Nie rozpoznano konkretnych filtrów.',
-            );
+            setAssistantFeedback(feedback.length > 0 ? `Zastosowano: ${feedback.join(', ')}` : 'Nie rozpoznano wymagań.');
         } catch (error: unknown) {
-            setAssistantMessage(getErrorMessage(error, 'Nie udało się przeanalizować zapytania.'));
+            setAssistantFeedback(getErrorMessage(error, 'Nie udało się połączyć z asystentem.'));
         } finally {
             setIsAssistantLoading(false);
         }
     };
 
-    const matchesRoomType = (room: Room) => {
-        if (!roomType) return true;
-        if (roomType === 'Aula') return room.type.includes('Aula');
-        if (roomType === 'Wykładowa') return room.type.includes('Wykładowa');
-        if (roomType === 'Ćwiczeniowa') return room.type.includes('Ćwiczeniowa');
-        if (roomType === 'Lab. Komputerowe') return room.type.includes('Laboratorium');
-        return true;
+    const filteredRooms = useMemo(() => rooms.filter((room) => (
+        (!selectedType || room.type.includes(selectedType === 'Lab. Komputerowe' ? 'Laboratorium' : selectedType)) &&
+        (!needsProjector || room.hasProjector) &&
+        (!requiredCapacity || room.capacity >= Number(requiredCapacity))
+    )), [rooms, selectedType, needsProjector, requiredCapacity]);
+
+    const handleBooking = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!selectedRoom || !subject.trim()) return;
+
+        try {
+            await ApiService.bookRoom(
+                selectedRoom.id,
+                date,
+                subject.trim(),
+                time,
+                calculateEndTime(time, duration),
+            );
+            setSelectedRoom(null);
+            setSubject('');
+            setNotice({ message: `Pomyślnie zarezerwowano salę ${selectedRoom.id}.`, type: 'success' });
+            await loadData();
+        } catch (error: unknown) {
+            setNotice({ message: getErrorMessage(error, 'Nie udało się zarezerwować sali.'), type: 'error' });
+        }
     };
 
-    const renderMap = () => {
-        return Object.entries(campusLayout).map(([floorName, roomIds]) => (
-            <div key={floorName} className="map-floor">
-                <div className="map-floor-title">{floorName}</div>
-                <div className="floor-grid">
-                    {roomIds.map(id => {
-                        const room = rooms.find(r => r.id === id);
-                        const extraStyle = (id === 'AULA_A' || id === 'SPORT') ? { gridColumn: 'span 2' } : {};
-
-                        const isAvailable = room && room.capacity >= minCapacity && (!reqProjector || room.hasProjector) && matchesRoomType(room);
-
-                        let statusClass = 'status-taken'; 
-                        if (isAvailable && !room.hasIssue) statusClass = 'status-free';
-                        if (isAvailable && room.hasIssue) statusClass = 'status-issue';
-                        if (selectedMapRoomId === id && isAvailable) statusClass = 'status-selected';
-
-                        return (
-                            <div 
-                                key={id} 
-                                className={`map-room ${statusClass}`} 
-                                style={extraStyle}
-                                onClick={() => isAvailable ? setSelectedMapRoomId(selectedMapRoomId === id ? null : id) : null}
-                            >
-                                {id}
-                                {room && <small>{room.type}</small>}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        ));
+    const cancelReservation = async (reservationId: string) => {
+        try {
+            await ApiService.cancelRoom(reservationId);
+            setNotice({ message: 'Rezerwacja została anulowana.', type: 'success' });
+            await loadData();
+        } catch (error: unknown) {
+            setNotice({ message: getErrorMessage(error, 'Nie udało się anulować rezerwacji.'), type: 'error' });
+        }
     };
-
-    const filteredRooms = rooms.filter(room => room.capacity >= minCapacity && (!reqProjector || room.hasProjector) && matchesRoomType(room));
 
     return (
-        <div className="view-section active">
-            <InlineNotice message={notice?.message || null} type={notice?.type || 'info'} />
-            <div className="form-panel">
-                <div className="form-row">
-                    <div className="input-group">
-                        <label>Imię i Nazwisko</label>
-                        <input type="text" value={userName} disabled />
-                    </div>
-                    <div className="input-group">
-                        <label>Temat zajęć</label>
-                        <input type="text" placeholder="np. Algorytmy" value={subject} onChange={e => setSubject(e.target.value)} />
-                    </div>
+        <div className="lecturer-dashboard">
+            <div className="header lecturer-header">
+                <div>
+                    <h1>Witaj {userName}!</h1>
+                    <p>System Rezerwacji ClassSpace</p>
                 </div>
-                <div className="form-row">
-                    <div className="input-group">
-                        <label>Data</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toLocaleDateString('en-CA')} />
+                <div className="header-actions">
+                    <div className="theme-switcher">
+                        <button className={`btn ${theme === 'light' ? 'btn-primary' : ''}`} onClick={() => setTheme('light')}>Jasny</button>
+                        <button className={`btn ${theme === 'dark' ? 'btn-primary' : ''}`} onClick={() => setTheme('dark')}>Ciemny</button>
                     </div>
-                    <div className="input-group">
-                        <label>Godzina rozpoczęcia</label>
-                        <select value={time} onChange={e => setTime(e.target.value)}>
-                            {/* Academic/Standard time blocks */}
-                            <option value="08:00">08:00</option>
-                            <option value="09:45">09:45</option>
-                            <option value="11:30">11:30</option>
-                            <option value="13:15">13:15</option>
-                            <option value="15:00">15:00</option>
-                            <option value="16:45">16:45</option>
-                            <option value="18:30">18:30</option>
-                            <option value="20:15">20:15</option>
-                        </select>
-                    </div>
-                    <div className="input-group">
-                        <label>Czas trwania (min)</label>
-                        <select value={duration} onChange={e => setDuration(e.target.value)}>
-                            <option value="45">45 min</option>
-                            <option value="90">90 min</option>
-                            <option value="180">180 min</option>
-                        </select>
-                    </div>
-                    <div className="input-group">
-                        <label>Min. pojemność</label>
-                        <input type="number" min="1" value={minCapacity} onChange={e => setMinCapacity(parseInt(e.target.value) || 0)} />
-                    </div>
-                </div>
-                <div className="checkbox-group">
-                    <input type="checkbox" id="req-projector" checked={reqProjector} onChange={e => setReqProjector(e.target.checked)} />
-                    <label htmlFor="req-projector" style={{ textTransform: 'none', fontSize: '14px' }}>Wymaga rzutnika</label>
+                    <button className="btn btn-logout" onClick={onLogout}>Wyloguj</button>
                 </div>
             </div>
 
-            <div className="assistant-panel">
-                <div className="assistant-heading">
-                    <div>
-                        <h3>Asystent wyboru sali</h3>
-                        <p>Opisz potrzeby zajęć, a asystent ustawi filtry.</p>
-                    </div>
-                </div>
-                <form className="assistant-form" onSubmit={handleAssistantQuery}>
+            <InlineNotice message={notice?.message || null} type={notice?.type || 'info'} />
+
+            <div className="ai-bar">
+                <h3>✨ Asystent AI</h3>
+                <form onSubmit={handleAssistantQuery} className="ai-input-wrapper">
                     <input
+                        className="ai-input"
                         value={assistantPrompt}
                         onChange={(event) => setAssistantPrompt(event.target.value)}
-                        placeholder="np. wykład dla 80 osób z rzutnikiem"
-                        aria-label="Opis potrzeb dotyczących sali"
+                        placeholder="W czym mogę pomóc?"
                     />
-                    <button type="submit" disabled={isAssistantLoading}>
-                        {isAssistantLoading ? 'Analizuję...' : 'Zastosuj'}
-                    </button>
+                    <button type="submit" className="btn-ai" disabled={isAssistantLoading}>Szukaj</button>
                 </form>
-                {assistantMessage && <p className="assistant-message">{assistantMessage}</p>}
+                {isAssistantLoading && <div className="ai-status"><span className="spinner" /> Model analizuje zapytanie...</div>}
+                {assistantFeedback && !isAssistantLoading && <div className="ai-status ai-success">{assistantFeedback}</div>}
             </div>
 
-            <div className="section-title">Moje rezerwacje</div>
+            <div className="filter-bar">
+                <div className="filter-pills">
+                    {ROOM_TYPES.map((type) => (
+                        <button
+                            key={type}
+                            className={`pill ${selectedType === type ? 'active' : ''}`}
+                            onClick={() => setSelectedType(selectedType === type ? null : type)}
+                        >
+                            {type}
+                        </button>
+                    ))}
+                </div>
+                <div className="divider" />
+                <button className={`pill ${needsProjector ? 'active' : ''}`} onClick={() => setNeedsProjector(!needsProjector)}>
+                    🎥 Rzutnik
+                </button>
+                <div className="divider" />
+                <label className="capacity-filter">
+                    Studenci:
+                    <input type="number" min="1" placeholder="Min." value={requiredCapacity} onChange={(event) => setRequiredCapacity(event.target.value)} />
+                </label>
+            </div>
+
+            <div className="booking-date-bar">
+                <label>Data <input type="date" value={date} min={new Date().toLocaleDateString('en-CA')} onChange={(event) => setDate(event.target.value)} /></label>
+                <label>Godzina <select value={time} onChange={(event) => setTime(event.target.value)}>
+                    {['08:00', '09:45', '11:30', '13:15', '15:00', '16:45', '18:30', '20:15'].map((slot) => <option key={slot}>{slot}</option>)}
+                </select></label>
+                <label>Czas trwania <select value={duration} onChange={(event) => setDuration(event.target.value)}>
+                    <option value="45">45 min</option><option value="90">90 min</option><option value="180">180 min</option>
+                </select></label>
+            </div>
+
+            <div className="section-title">Dostępne sale</div>
+            <div className="grid">
+                {filteredRooms.map((room) => (
+                    <button key={room.id} className="card room-card-button" onClick={() => setSelectedRoom(room)}>
+                        <h3>Sala {room.id}</h3>
+                        <p>{room.type}</p>
+                        <div className="room-card-meta">
+                            <span>👨‍🎓 {room.capacity} os.</span>
+                            <span>🎥 {room.hasProjector ? 'Rzutnik' : 'Brak'}</span>
+                        </div>
+                    </button>
+                ))}
+                {filteredRooms.length === 0 && <div className="empty-rooms">Nie znaleziono sal spełniających kryteria.</div>}
+            </div>
+
+            <div className="section-title reservation-heading">Moje rezerwacje</div>
             <div className="reservation-list">
-                {myReservations.length === 0 ? (
-                    <p className="reservation-empty">Nie masz jeszcze aktywnych rezerwacji.</p>
-                ) : (
-                    myReservations.map((reservation) => (
-                        <div className="reservation-card" key={reservation.id}>
-                            <div>
-                                <h3>Sala {reservation.room.id}</h3>
-                                <p>{reservation.room.type} | {reservation.room.capacity} osób</p>
-                                <p><strong>{reservation.date}</strong> | {reservation.startTime} - {reservation.endTime}</p>
-                                <p>Temat: {reservation.subject}</p>
-                            </div>
-                            <button
-                                className="btn btn-return"
-                                onClick={() => void handleCancelReservation(reservation.id)}
-                            >
-                                Anuluj
-                            </button>
+                {reservations.length === 0 ? <p className="reservation-empty">Nie masz jeszcze aktywnych rezerwacji.</p> : reservations.map((reservation) => (
+                    <div className="reservation-card" key={reservation.id}>
+                        <div>
+                            <h3>Sala {reservation.room.id}</h3>
+                            <p>{reservation.room.type} | {reservation.room.capacity} osób</p>
+                            <p><strong>{reservation.date}</strong> | {reservation.startTime} - {reservation.endTime}</p>
+                            <p>Temat: {reservation.subject}</p>
                         </div>
-                    ))
-                )}
-            </div>
-
-            <div className="section-title">Mapa kampusu</div>
-            <div className="interactive-map-container">
-                <div className="map-legend">
-                    <div className="legend-item"><div className="legend-box status-free"></div> Dostępne</div>
-                    <div className="legend-item"><div className="legend-box status-issue"></div> Usterka</div>
-                    <div className="legend-item"><div className="legend-box status-taken"></div> Niedostępne / Nie pasują</div>
-                    <div className="legend-item"><div className="legend-box status-selected"></div> Wybór</div>
-                </div>
-                <div id="floors-container">
-                    {renderMap()}
-                </div>
-            </div>
-
-            {selectedMapRoomId && (() => {
-                const room = rooms.find(r => r.id === selectedMapRoomId);
-                if (!room) return null;
-                return (
-                    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', padding: '20px', borderRadius: 'var(--radius)', marginBottom: '40px' }}>
-                        <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>Wybrano: Sala {selectedMapRoomId}</h3>
-                        <p style={{ marginTop: 0, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '15px' }}>Pojemność: {room.capacity} | Rzutnik: {room.hasProjector ? 'Tak' : 'Nie'}</p>
-                        {room.hasIssue && <div style={{ color: 'var(--danger)', fontWeight: 'bold', marginBottom: '15px' }}>Usterka: {room.issueDesc}</div>}
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button className="btn btn-reserve" style={{ flex: 2 }} onClick={() => handleBookRoom(selectedMapRoomId)}>Zarezerwuj Salę</button>
-                            <button className="btn btn-return" style={{ flex: 1 }} onClick={() => handleReportIssue(selectedMapRoomId)}>Zgłoś Usterkę</button>
-                        </div>
+                        <button className="btn btn-return" onClick={() => void cancelReservation(reservation.id)}>Anuluj</button>
                     </div>
-                );
-            })()}
-
-            <div className="section-title" style={{ marginTop: '40px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Idealnie dopasowane sale</div>
-            <div>
-                {filteredRooms.length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', padding: '10px' }}>Brak wolnych sal spełniających Twoje kryteria. Zmień filtry lub czas.</div>
-                ) : (
-                    filteredRooms.map(room => (
-                        <div key={room.id} className="room-card" style={{ borderLeft: '4px solid var(--success)' }}>
-                            <div className="room-info">
-                                <h3>SALA {room.id}</h3>
-                                <p>Typ: {room.type} | Pojemność: {room.capacity} osób</p>
-                                {room.hasIssue && <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '5px' }}><strong>Usterka:</strong> {room.issueDesc}</p>}
-                            </div>
-                            <div>
-                                <button className="btn btn-reserve" onClick={() => handleBookRoom(room.id)}>Rezerwuj</button>
-                            </div>
-                        </div>
-                    ))
-                )}
+                ))}
             </div>
+
+            {selectedRoom && (
+                <div className="modal-overlay" onClick={() => setSelectedRoom(null)}>
+                    <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+                        <button className="modal-close" onClick={() => setSelectedRoom(null)}>&times;</button>
+                        <h2>Sala {selectedRoom.id}</h2>
+                        <p className="modal-room-details">{selectedRoom.type} | {selectedRoom.capacity} osób | {selectedRoom.hasProjector ? 'Rzutnik' : 'Brak rzutnika'}</p>
+                        <div className="timeline-container"><strong>Dostępność sali</strong><div className="timeline-bar"><div className="time-slot slot-free" /><div className="time-slot slot-booked" /><div className="time-slot slot-free" /><div className="time-slot slot-free" /></div></div>
+                        <form onSubmit={handleBooking}>
+                            <div className="form-group"><label>Przedmiot</label><input className="form-input" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="np. Algorytmy" required /></div>
+                            <div className="modal-booking-summary"><span>{date}</span><span>{time} - {calculateEndTime(time, duration)}</span></div>
+                            <button type="submit" className="btn btn-primary modal-submit">Zatwierdź rezerwację</button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
